@@ -8,6 +8,9 @@ impl StorageHandle for InlineStorageHandle {}
 
 pub struct InlineStorage<T>(UnsafeCell<MaybeUninit<T>>);
 
+unsafe impl<T> Send for InlineStorage<T> {}
+unsafe impl<T> Sync for InlineStorage<T> {}
+
 impl<T> InlineStorage<T> {
     pub const fn new() -> Self {
         Self(UnsafeCell::new(MaybeUninit::uninit()))

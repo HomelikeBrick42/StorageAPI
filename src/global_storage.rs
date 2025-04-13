@@ -6,6 +6,9 @@ use core::{alloc::Layout, ptr::NonNull};
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GlobalHandle(pub NonNull<()>);
 
+unsafe impl Send for GlobalHandle {}
+unsafe impl Sync for GlobalHandle {}
+
 impl StorageHandle for GlobalHandle {}
 
 #[derive(Clone, Copy)]
