@@ -96,3 +96,39 @@ unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
 }
 
 unsafe impl<T: MultipleStorage + ?Sized> MultipleStorage for &T {}
+
+unsafe impl<T: Storage + ?Sized> Storage for &mut T {
+    type Handle = T::Handle;
+
+    unsafe fn resolve(&self, handle: &Self::Handle) -> NonNull<()> {
+        unsafe { T::resolve(self, handle) }
+    }
+
+    fn allocate(&self, layout: Layout) -> Result<(Self::Handle, usize), StorageAllocError> {
+        T::allocate(self, layout)
+    }
+
+    unsafe fn deallocate(&self, layout: Layout, handle: Self::Handle) {
+        unsafe { T::deallocate(self, layout, handle) }
+    }
+
+    unsafe fn grow(
+        &self,
+        old_layout: Layout,
+        new_layout: Layout,
+        handle: &Self::Handle,
+    ) -> Result<(Self::Handle, usize), StorageAllocError> {
+        unsafe { T::grow(self, old_layout, new_layout, handle) }
+    }
+
+    unsafe fn shrink(
+        &self,
+        old_layout: Layout,
+        new_layout: Layout,
+        handle: &Self::Handle,
+    ) -> Result<(Self::Handle, usize), StorageAllocError> {
+        unsafe { T::shrink(self, old_layout, new_layout, handle) }
+    }
+}
+
+unsafe impl<T: MultipleStorage + ?Sized> MultipleStorage for &mut T {}
