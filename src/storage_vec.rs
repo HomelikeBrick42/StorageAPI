@@ -261,7 +261,7 @@ impl<T, S: Storage> DerefMut for Vec<T, S> {
     }
 }
 
-impl<T, S: Storage> Drop for Vec<T, S> {
+unsafe impl<#[may_dangle] T, S: Storage> Drop for Vec<T, S> {
     fn drop(&mut self) {
         unsafe {
             core::ptr::drop_in_place(self.as_mut_slice());
@@ -273,11 +273,13 @@ impl<T, S: Storage> Drop for Vec<T, S> {
     }
 }
 
+#[derive(Debug)]
 pub struct PushError<T> {
     pub value: T,
     pub alloc_error: StorageAllocError,
 }
 
+#[derive(Debug)]
 pub struct InsertError<T> {
     pub value: T,
     pub alloc_error: Option<StorageAllocError>,
