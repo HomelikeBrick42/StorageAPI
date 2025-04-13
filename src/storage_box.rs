@@ -15,8 +15,20 @@ pub struct Box<T: ?Sized, S: Storage = Global> {
     _data: PhantomData<T>,
 }
 
-unsafe impl<T: Send + ?Sized, S: Storage> Send for Box<T, S> {}
-unsafe impl<T: Sync + ?Sized, S: Storage> Sync for Box<T, S> {}
+unsafe impl<T, S> Send for Box<T, S>
+where
+    T: Send + ?Sized,
+    S: Storage + Send,
+    S::Handle: Send,
+{
+}
+unsafe impl<T, S> Sync for Box<T, S>
+where
+    T: Sync + ?Sized,
+    S: Storage + Sync,
+    S::Handle: Sync,
+{
+}
 
 impl<T> Box<T> {
     pub fn new(value: T) -> Result<Self, StorageAllocError> {
