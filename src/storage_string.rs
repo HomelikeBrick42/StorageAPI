@@ -1,10 +1,9 @@
+use crate::{
+    Storage, StorageAllocError, global_storage::Global, storage_box::Box, storage_vec::Vec,
+};
 use core::{
     ops::{Deref, DerefMut},
     str::FromStr,
-};
-
-use crate::{
-    Storage, StorageAllocError, global_storage::Global, storage_box::Box, storage_vec::Vec,
 };
 
 pub struct String<S: Storage = Global> {
@@ -110,7 +109,7 @@ impl<S: Storage> DerefMut for String<S> {
     }
 }
 
-impl FromStr for String<Global> {
+impl FromStr for String {
     type Err = StorageAllocError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
