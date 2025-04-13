@@ -11,6 +11,7 @@
 
 pub mod global_storage;
 pub mod inline_storage;
+pub mod slot_storage;
 pub mod storage_box;
 pub mod storage_vec;
 
