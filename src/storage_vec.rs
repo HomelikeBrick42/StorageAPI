@@ -234,16 +234,25 @@ impl<T, S: Storage> Vec<T, S> {
         }
     }
 
-    pub fn as_ptr(&self) -> NonNull<T> {
-        unsafe { self.storage.resolve(&self.handle).cast() }
-    }
-
     pub fn as_slice(&self) -> &[T] {
-        unsafe { NonNull::slice_from_raw_parts(self.as_ptr(), self.length).as_ref() }
+        unsafe { NonNull::from_raw_parts(self.storage.resolve(&self.handle), self.length).as_ref() }
     }
 
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { NonNull::slice_from_raw_parts(self.as_ptr(), self.length).as_mut() }
+        unsafe { NonNull::from_raw_parts(self.storage.resolve(&self.handle), self.length).as_mut() }
+    }
+}
+
+impl<T: Copy, S: Storage> Vec<T, S> {
+    pub fn extend_from_slice(&mut self, values: &[T]) -> Result<&mut [T], StorageAllocError> {
+        let index = self.length;
+        let length = values.len();
+        self.reserve(length)?;
+        unsafe {
+            let ptr = self.as_mut_ptr().add(index);
+            ptr.copy_from(values.as_ptr(), length);
+            Ok(&mut *core::ptr::slice_from_raw_parts_mut(ptr, length))
+        }
     }
 }
 

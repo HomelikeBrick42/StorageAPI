@@ -71,9 +71,9 @@ impl<T: ?Sized, S: Storage> Box<T, S> {
         }
     }
 
-    pub fn into_raw_parts(self) -> (S, S::Handle, <T as Pointee>::Metadata) {
+    pub fn into_raw_parts(b: Self) -> (S, S::Handle, <T as Pointee>::Metadata) {
         unsafe {
-            let mut this = ManuallyDrop::new(self);
+            let mut this = ManuallyDrop::new(b);
             (
                 core::ptr::read(&this.storage),
                 ManuallyDrop::take(&mut this.handle),
