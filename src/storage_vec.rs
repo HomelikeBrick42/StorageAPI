@@ -351,10 +351,10 @@ impl<T: Copy, S: Storage> Vec<T, S> {
         let length = values.len();
         self.reserve(length)?;
         unsafe {
-            let ptr = self.as_mut_ptr().add(index);
-            ptr.copy_from(values.as_ptr(), length);
+            let ptr = self.storage.resolve(&self.handle).cast::<T>().add(index);
+            ptr.as_ptr().copy_from(values.as_ptr(), length);
             self.length += length;
-            Ok(&mut *core::ptr::slice_from_raw_parts_mut(ptr, length))
+            Ok(NonNull::slice_from_raw_parts(ptr, length).as_mut())
         }
     }
 }
