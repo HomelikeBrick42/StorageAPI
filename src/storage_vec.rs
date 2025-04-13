@@ -19,12 +19,20 @@ impl<T> Vec<T> {
     pub fn new() -> Result<Self, StorageAllocError> {
         Self::new_in(Global)
     }
+
+    pub fn with_capacity(capacity: usize) -> Result<Self, StorageAllocError> {
+        Self::with_capacity_in(capacity, Global)
+    }
 }
 
 impl<T, S: Storage> Vec<T, S> {
     pub fn new_in(storage: S) -> Result<Self, StorageAllocError> {
+        Self::with_capacity_in(0, storage)
+    }
+
+    pub fn with_capacity_in(capacity: usize, storage: S) -> Result<Self, StorageAllocError> {
         let (handle, capacity_in_bytes) =
-            storage.allocate(unsafe { Layout::array::<T>(0).unwrap_unchecked() })?;
+            storage.allocate(Layout::array::<T>(capacity).map_err(|_| StorageAllocError)?)?;
         Ok(Self {
             handle: ManuallyDrop::new(handle),
             length: 0,
