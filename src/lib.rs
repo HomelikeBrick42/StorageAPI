@@ -12,9 +12,11 @@
 pub mod global_storage;
 pub mod inline_storage;
 pub mod storage_box;
+pub mod storage_vec;
 
 use core::{alloc::Layout, fmt::Debug, hash::Hash, ptr::NonNull};
 
+#[derive(Debug, Clone, Copy)]
 pub struct StorageAllocError;
 
 pub trait StorageHandle: Debug + Eq + Ord + Hash {}
@@ -23,7 +25,6 @@ pub trait StorageHandle: Debug + Eq + Ord + Hash {}
 /// TODO
 pub unsafe trait Storage {
     type Handle: StorageHandle;
-    const DANGLING: Self::Handle;
 
     /// Returns a pointer to the allocation represented by `handle`
     /// # Safety
@@ -43,8 +44,8 @@ pub unsafe trait Storage {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: Self::Handle,
-    ) -> Result<(Self::Handle, usize), Self::Handle>;
+        handle: &Self::Handle,
+    ) -> Result<(Self::Handle, usize), StorageAllocError>;
 
     /// # Safety
     /// TODO
@@ -52,8 +53,8 @@ pub unsafe trait Storage {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: Self::Handle,
-    ) -> Result<(Self::Handle, usize), Self::Handle>;
+        handle: &Self::Handle,
+    ) -> Result<(Self::Handle, usize), StorageAllocError>;
 }
 
 /// # Safety
@@ -62,8 +63,6 @@ pub unsafe trait MultipleStorage: Storage {}
 
 unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
     type Handle = T::Handle;
-
-    const DANGLING: Self::Handle = T::DANGLING;
 
     unsafe fn resolve(&self, handle: &Self::Handle) -> NonNull<()> {
         unsafe { T::resolve(self, handle) }
@@ -81,8 +80,8 @@ unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: Self::Handle,
-    ) -> Result<(Self::Handle, usize), Self::Handle> {
+        handle: &Self::Handle,
+    ) -> Result<(Self::Handle, usize), StorageAllocError> {
         unsafe { T::grow(self, old_layout, new_layout, handle) }
     }
 
@@ -90,8 +89,8 @@ unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: Self::Handle,
-    ) -> Result<(Self::Handle, usize), Self::Handle> {
+        handle: &Self::Handle,
+    ) -> Result<(Self::Handle, usize), StorageAllocError> {
         unsafe { T::shrink(self, old_layout, new_layout, handle) }
     }
 }

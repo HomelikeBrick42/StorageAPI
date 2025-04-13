@@ -8,7 +8,7 @@ use core::{
 };
 
 pub struct Box<T: ?Sized, S: Storage = Global> {
-    handle: S::Handle,
+    handle: ManuallyDrop<S::Handle>,
     storage: S,
     /// for storing metadata in a way that is compatible with [`CoerceUnsized`], this is an extra pointer but whatever :/
     metadata_ptr: NonNull<T>,
@@ -29,8 +29,8 @@ impl<T, S: Storage> Box<T, S> {
         let (handle, _) = storage.allocate(Layout::new::<T>())?;
         unsafe {
             storage.resolve(&handle).cast::<T>().write(value);
+            Ok(Self::from_raw_parts(storage, handle, ()))
         }
-        Ok(Self::from_raw_parts(storage, handle, ()))
     }
 
     pub fn into_inner(self) -> T {
@@ -44,13 +44,15 @@ impl<T, S: Storage> Box<T, S> {
 }
 
 impl<T: ?Sized, S: Storage> Box<T, S> {
-    pub fn from_raw_parts(
+    /// # Safety
+    /// TODO
+    pub unsafe fn from_raw_parts(
         storage: S,
         handle: S::Handle,
         metadata: <T as Pointee>::Metadata,
     ) -> Self {
         Self {
-            handle,
+            handle: ManuallyDrop::new(handle),
             storage,
             metadata_ptr: NonNull::from_raw_parts(NonNull::<()>::dangling(), metadata),
             _data: PhantomData,
@@ -59,10 +61,10 @@ impl<T: ?Sized, S: Storage> Box<T, S> {
 
     pub fn into_raw_parts(self) -> (S, S::Handle, <T as Pointee>::Metadata) {
         unsafe {
-            let this = ManuallyDrop::new(self);
+            let mut this = ManuallyDrop::new(self);
             (
                 core::ptr::read(&this.storage),
-                core::ptr::read(&this.handle),
+                ManuallyDrop::take(&mut this.handle),
                 core::ptr::metadata(this.metadata_ptr.as_ptr()),
             )
         }
@@ -77,11 +79,11 @@ impl<T: ?Sized, S: Storage> Box<T, S> {
 unsafe impl<#[may_dangle] T: ?Sized, S: Storage> Drop for Box<T, S> {
     fn drop(&mut self) {
         unsafe {
-            core::ptr::drop_in_place(self.as_ptr().as_ptr());
-            self.storage.deallocate(
-                Layout::for_value_raw(self.metadata_ptr.as_ptr()),
-                core::mem::replace(&mut self.handle, S::DANGLING),
-            );
+            let ptr = self.as_ptr();
+            let layout = Layout::for_value_raw(ptr.as_ptr());
+            ptr.drop_in_place();
+            self.storage
+                .deallocate(layout, ManuallyDrop::take(&mut self.handle));
         }
     }
 }

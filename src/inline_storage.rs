@@ -17,8 +17,6 @@ impl<T> InlineStorage<T> {
 unsafe impl<T> Storage for InlineStorage<T> {
     type Handle = InlineStorageHandle;
 
-    const DANGLING: Self::Handle = InlineStorageHandle(());
-
     unsafe fn resolve(&self, InlineStorageHandle(()): &Self::Handle) -> NonNull<()> {
         unsafe { NonNull::new_unchecked(self.0.get().cast()) }
     }
@@ -39,22 +37,22 @@ unsafe impl<T> Storage for InlineStorage<T> {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        old_alloc: Self::Handle,
-    ) -> Result<(Self::Handle, usize), Self::Handle> {
+        old_alloc: &Self::Handle,
+    ) -> Result<(Self::Handle, usize), StorageAllocError> {
         _ = old_layout;
+        _ = old_alloc;
         self.allocate(new_layout)
-            .map_err(|StorageAllocError| old_alloc)
     }
 
     unsafe fn shrink(
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        old_alloc: Self::Handle,
-    ) -> Result<(Self::Handle, usize), Self::Handle> {
+        InlineStorageHandle(()): &Self::Handle,
+    ) -> Result<(Self::Handle, usize), StorageAllocError> {
         _ = old_layout;
-        self.allocate(new_layout)
-            .map_err(|StorageAllocError| old_alloc)
+        _ = new_layout;
+        Ok((InlineStorageHandle(()), size_of::<T>()))
     }
 }
 
