@@ -1,3 +1,7 @@
+pub use into_iter::VecIntoIter;
+
+mod into_iter;
+
 use crate::{Storage, StorageAllocError, global_storage::Global, storage_box::Box};
 use core::{
     alloc::Layout,
@@ -188,6 +192,18 @@ impl<T, S: Storage> Vec<T, S> {
         }
     }
 
+    /// Returns a slice referencing the initialised elements of this [`Vec`]
+    pub fn as_slice(&self) -> &[T] {
+        unsafe { NonNull::from_raw_parts(self.storage.resolve(&self.handle), self.length).as_ref() }
+    }
+
+    /// Returns a mutable slice referencing the initialised elements of this [`Vec`]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        unsafe { NonNull::from_raw_parts(self.storage.resolve(&self.handle), self.length).as_mut() }
+    }
+}
+
+impl<T, S: Storage> Vec<T, S> {
     /// Adds an element to the end of a [`Vec`]
     /// ```
     /// use storage_api::{Vec, InlineStorage};
@@ -320,16 +336,24 @@ impl<T, S: Storage> Vec<T, S> {
             Some(value)
         }
     }
+}
 
-    /// Returns a slice referencing the initialised elements of this [`Vec`]
-    pub fn as_slice(&self) -> &[T] {
-        unsafe { NonNull::from_raw_parts(self.storage.resolve(&self.handle), self.length).as_ref() }
-    }
+/// The error returned by [`Vec::push`]
+#[derive(Debug, PartialEq, Eq)]
+pub struct PushError<T> {
+    /// The value that was attempted to be pushed
+    pub value: T,
+    /// The allocation error
+    pub alloc_error: StorageAllocError,
+}
 
-    /// Returns a mutable slice referencing the initialised elements of this [`Vec`]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { NonNull::from_raw_parts(self.storage.resolve(&self.handle), self.length).as_mut() }
-    }
+/// The error returned by [`Vec::insert`]
+#[derive(Debug, PartialEq, Eq)]
+pub struct InsertError<T> {
+    /// The value that was attempted to be inserted
+    pub value: T,
+    /// this is [`None`] if the index to insert was out of range, otherwise its [`Some`] with the allocation error
+    pub alloc_error: Option<StorageAllocError>,
 }
 
 impl<T: Copy, S: Storage> Vec<T, S> {
@@ -360,6 +384,18 @@ impl<T: Copy, S: Storage> Vec<T, S> {
     }
 }
 
+unsafe impl<#[may_dangle] T, S: Storage> Drop for Vec<T, S> {
+    fn drop(&mut self) {
+        unsafe {
+            core::ptr::drop_in_place(self.as_mut_slice());
+            self.storage.deallocate(
+                Layout::array::<T>(self.capacity).unwrap_unchecked(),
+                ManuallyDrop::take(&mut self.handle),
+            );
+        }
+    }
+}
+
 impl<T, S: Storage> Deref for Vec<T, S> {
     type Target = [T];
 
@@ -374,32 +410,29 @@ impl<T, S: Storage> DerefMut for Vec<T, S> {
     }
 }
 
-unsafe impl<#[may_dangle] T, S: Storage> Drop for Vec<T, S> {
-    fn drop(&mut self) {
-        unsafe {
-            core::ptr::drop_in_place(self.as_mut_slice());
-            self.storage.deallocate(
-                Layout::array::<T>(self.capacity).unwrap_unchecked(),
-                ManuallyDrop::take(&mut self.handle),
-            );
-        }
+impl<'a, T, S: Storage> IntoIterator for &'a Vec<T, S> {
+    type Item = &'a T;
+    type IntoIter = core::slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
-/// The error returned by [`Vec::push`]
-#[derive(Debug, PartialEq, Eq)]
-pub struct PushError<T> {
-    /// The value that was attempted to be pushed
-    pub value: T,
-    /// The allocation error
-    pub alloc_error: StorageAllocError,
+impl<'a, T, S: Storage> IntoIterator for &'a mut Vec<T, S> {
+    type Item = &'a mut T;
+    type IntoIter = core::slice::IterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
 }
 
-/// The error returned by [`Vec::insert`]
-#[derive(Debug, PartialEq, Eq)]
-pub struct InsertError<T> {
-    /// The value that was attempted to be inserted
-    pub value: T,
-    /// this is [`None`] if the index to insert was out of range, otherwise its [`Some`] with the allocation error
-    pub alloc_error: Option<StorageAllocError>,
+impl<T, S: Storage> IntoIterator for Vec<T, S> {
+    type Item = T;
+    type IntoIter = VecIntoIter<T, S>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        VecIntoIter::new(self)
+    }
 }

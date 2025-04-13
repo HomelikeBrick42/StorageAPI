@@ -35,7 +35,7 @@ pub mod storages {
 pub mod collections {
     pub use crate::storage_box::Box;
     pub use crate::storage_string::String;
-    pub use crate::storage_vec::{InsertError, PushError, Vec};
+    pub use crate::storage_vec::{InsertError, PushError, Vec, VecIntoIter};
 }
 
 use core::{alloc::Layout, fmt::Debug, hash::Hash, ptr::NonNull};
