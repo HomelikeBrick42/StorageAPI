@@ -1,6 +1,9 @@
 [package]
-name = "storage"
+name = "storage_api"
 version = "0.1.0"
 edition = "2024"
+description = "Implementation of the Storage API, a better version of Allocator"
+license = "MIT"
+repository = "https://github.com/HomelikeBrick42/StorageAPI"
 
 [dependencies]

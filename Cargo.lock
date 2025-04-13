@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "storage"
+name = "storage_api"
 version = "0.1.0"
