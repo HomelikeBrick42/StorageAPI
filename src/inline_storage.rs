@@ -1,17 +1,22 @@
 use crate::{Storage, StorageAllocError, StorageHandle};
 use core::{alloc::Layout, cell::UnsafeCell, mem::MaybeUninit, ptr::NonNull};
 
+/// The [`StorageHandle`] for [`InlineStorage`],
+/// this is a ZST
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InlineStorageHandle(());
 
 impl StorageHandle for InlineStorageHandle {}
 
+/// Represents an inline storage with the size/alignment requirements of `T`,
+/// this [`Storage`] type being possible of the main reasons for the [`Storage`] API existing
 pub struct InlineStorage<T>(UnsafeCell<MaybeUninit<T>>);
 
 unsafe impl<T> Send for InlineStorage<T> {}
 unsafe impl<T> Sync for InlineStorage<T> {}
 
 impl<T> InlineStorage<T> {
+    /// Constructs a new [`InlineStorage`]
     pub const fn new() -> Self {
         Self(UnsafeCell::new(MaybeUninit::uninit()))
     }

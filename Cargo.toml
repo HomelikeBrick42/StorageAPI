@@ -7,3 +7,7 @@ license = "MIT"
 repository = "https://github.com/HomelikeBrick42/StorageAPI"
 
 [dependencies]
+
+[lints.rust]
+elided_lifetimes_in_paths = "deny"
+missing_docs = "warn"

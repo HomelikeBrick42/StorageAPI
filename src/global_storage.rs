@@ -3,6 +3,8 @@ extern crate alloc;
 use crate::{MultipleStorage, Storage, StorageAllocError, StorageHandle};
 use core::{alloc::Layout, ptr::NonNull};
 
+/// The [`StorageHandle`] for [`Global`],
+/// this is a wrapper around a [`NonNull<()>`]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GlobalHandle(pub NonNull<()>);
 
@@ -11,6 +13,9 @@ unsafe impl Sync for GlobalHandle {}
 
 impl StorageHandle for GlobalHandle {}
 
+/// This represents the global allocator registered with the `#[global_allocator]` attribute
+///
+/// See [`GlobalAlloc`](alloc::alloc::GlobalAlloc) for more info
 #[derive(Clone, Copy)]
 pub struct Global;
 

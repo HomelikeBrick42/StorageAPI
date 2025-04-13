@@ -24,28 +24,35 @@ mod storage_box;
 mod storage_string;
 mod storage_vec;
 
+/// The types that implement [`Storage`](crate::Storage)
 pub mod storages {
     pub use crate::global_storage::{Global, GlobalHandle};
     pub use crate::inline_storage::{InlineStorage, InlineStorageHandle};
     pub use crate::slot_storage::{SlotStorage, SlotStorageHandle};
 }
 
+/// The collections that use a [`Storage`](crate::Storage) for their backing data
 pub mod collections {
     pub use crate::storage_box::Box;
     pub use crate::storage_string::String;
-    pub use crate::storage_vec::Vec;
+    pub use crate::storage_vec::{InsertError, PushError, Vec};
 }
 
 use core::{alloc::Layout, fmt::Debug, hash::Hash, ptr::NonNull};
 
-#[derive(Debug, Clone, Copy)]
+/// The error returned when allocating using a [`Storage`] fails
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StorageAllocError;
 
+/// The trait that all [`Storage::Handle`]s must implement
 pub trait StorageHandle: Debug + Eq + Ord + Hash {}
 
+/// The trait for allocating memory in a storage
+///
 /// # Safety
-/// TODO
+/// - [`Storage::resolve`] must return a valid pointer to the allocation when passed a valid [`Storage::Handle`]
 pub unsafe trait Storage {
+    /// The [`StorageHandle`] type that represents an allocation by this [`Storage`]
     type Handle: StorageHandle;
 
     /// Returns a pointer to the allocation represented by `handle`
@@ -53,15 +60,29 @@ pub unsafe trait Storage {
     /// `handle` must be valid
     unsafe fn resolve(&self, handle: &Self::Handle) -> NonNull<()>;
 
+    /// Allocates memory with a layout specified by `layout`
+    ///
+    /// Also returns the total amount of bytes actually allocated, which may be more than requested by `layout`
+    ///
     /// Unless `Self` implements [`MultipleStorage`] this will invalidate any previous allocations
     fn allocate(&self, layout: Layout) -> Result<(Self::Handle, usize), StorageAllocError>;
 
+    /// Deallocates (and invalidates) a [`StorageHandle`] that was allocated with this [`Storage`]
+    ///
     /// # Safety
-    /// `layout` must be the same layout that was used to allocate it, though the size may by greater as long as its less than the available capacity returned by any of the allocation methods
+    /// - `layout` must be the same layout that was used to allocate it,
+    ///   though the size may by greater as long as its less than the available capacity returned by any of the allocation methods ([`Storage::allocate`]/[`Storage::grow`]/[`Storage::shrink`])
+    /// - `handle` must be valid
     unsafe fn deallocate(&self, layout: Layout, handle: Self::Handle);
 
+    /// Grows (increases the size of) an allocation
+    ///
+    /// Similar to [`Storage::allocate`] this method also returns the number of bytes actually allocated, which may be more than requested with `new_layout`
+    ///
     /// # Safety
-    /// TODO
+    /// - `new_layout.size() >= old_layout.size()`
+    /// - `handle` must be valid
+    /// - if this method succeeds, `handle` is now invalid and cannot be used
     unsafe fn grow(
         &self,
         old_layout: Layout,
@@ -69,8 +90,14 @@ pub unsafe trait Storage {
         handle: &Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError>;
 
+    /// Shrinks (decreases the size of) an allocation
+    ///
+    /// Similar to [`Storage::allocate`] this method also returns the number of bytes actually allocated, which may be more than requested with `new_layout`
+    ///
     /// # Safety
-    /// TODO
+    /// - `new_layout.size() <= old_layout.size()`
+    /// - `handle` must be valid
+    /// - if this method succeeds, `handle` is now invalid and cannot be used
     unsafe fn shrink(
         &self,
         old_layout: Layout,
