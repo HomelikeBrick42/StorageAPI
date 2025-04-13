@@ -33,10 +33,10 @@ where
 {
 }
 
-impl<T> Box<T> {
-    /// [`Box::new_in`] but with the [`Global`] storage
+impl<T, S: Storage + Default> Box<T, S> {
+    /// [`Box::new_in`] but using [`Default::default`] for the [`Storage`]
     pub fn new(value: T) -> Result<Self, StorageAllocError> {
-        Self::new_in(value, Global)
+        Self::new_in(value, Default::default())
     }
 }
 

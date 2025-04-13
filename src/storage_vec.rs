@@ -20,17 +20,17 @@ pub struct Vec<T, S: Storage = Global> {
     _data: PhantomData<[T]>,
 }
 
-impl<T> Vec<T> {
-    /// [`Vec::new_in`] but with the [`Global`] storage
+impl<T, S: Storage + Default> Vec<T, S> {
+    /// [`Vec::new_in`] but using [`Default::default`] for the allocator
     ///
     /// This is the same as [`Vec::with_capacity(0)`](Vec::with_capacity)
     pub fn new() -> Result<Self, StorageAllocError> {
-        Self::new_in(Global)
+        Self::new_in(Default::default())
     }
 
-    /// [`Vec::with_capacity_in`] but with the [`Global`] storage
+    /// [`Vec::with_capacity_in`] but  using [`Default::default`] for the allocator
     pub fn with_capacity(capacity: usize) -> Result<Self, StorageAllocError> {
-        Self::with_capacity_in(capacity, Global)
+        Self::with_capacity_in(capacity, Default::default())
     }
 }
 
@@ -209,12 +209,18 @@ impl<T, S: Storage> Vec<T, S> {
     /// use storage_api::{Vec, InlineStorage};
     /// # use storage_api::{StorageAllocError, collections::PushError};
     ///
-    /// let storage = InlineStorage::<[i32; 2]>::new(); // a storage with room for 2 `i32`s
-    /// let mut v = Vec::new_in(storage).unwrap();
+    /// type S = InlineStorage<[i32; 2]>; // a storage with room for 2 `i32`s
+    ///
+    /// # fn main() -> Result<(), StorageAllocError> {
+    ///
+    /// let mut v = Vec::<i32, S>::new()?;
     /// assert_eq!(v.push(1), Ok(&mut 1));
     /// assert_eq!(v.push(2), Ok(&mut 2));
     /// assert_eq!(v.push(3), Err(PushError { value: 3, alloc_error: StorageAllocError })); // this will fail because there is not enough room
     /// assert_eq!(&*v, &[1, 2]);
+    ///
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn push(&mut self, value: T) -> Result<&mut T, PushError<T>> {
         match self.reserve(1) {
@@ -240,14 +246,20 @@ impl<T, S: Storage> Vec<T, S> {
     /// use storage_api::{Vec, InlineStorage};
     /// # use storage_api::{StorageAllocError, collections::InsertError};
     ///
-    /// let storage = InlineStorage::<[i32; 3]>::new(); // a storage with room for 3 `i32`s
-    /// let mut v = Vec::new_in(storage).unwrap();
+    /// type S = InlineStorage<[i32; 3]>; // a storage with room for 3 `i32`s
+    ///
+    /// # fn main() -> Result<(), StorageAllocError> {
+    ///
+    /// let mut v = Vec::<i32, S>::new()?;
     /// assert_eq!(v.insert(1, 1), Err(InsertError { value: 1, alloc_error: None })); // this will fail because `index` is out of range
     /// assert_eq!(v.insert(0, 2), Ok(&mut 2)); // inserting at the "end" works
     /// assert_eq!(v.insert(1, 3), Ok(&mut 3));
     /// assert_eq!(v.insert(1, 4), Ok(&mut 4));
     /// assert_eq!(v.insert(1, 5), Err(InsertError { value: 5, alloc_error: Some(StorageAllocError) })); // this will fail because there is not enough room
     /// assert_eq!(&*v, &[2, 4, 3]);
+    ///
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn insert(&mut self, index: usize, value: T) -> Result<&mut T, InsertError<T>> {
         if index > self.length {
@@ -279,17 +291,24 @@ impl<T, S: Storage> Vec<T, S> {
     ///
     /// ```
     /// use storage_api::{Vec, InlineStorage};
+    /// # use storage_api::StorageAllocError;
     ///
-    /// let storage = InlineStorage::<[i32; 3]>::new(); // a storage with room for 3 `i32`s
-    /// let mut v = Vec::new_in(storage).unwrap();
-    /// v.extend_from_slice(&[1, 2, 3]).unwrap();
+    /// type S = InlineStorage<[i32; 3]>; // a storage with room for 3 `i32`s
+    ///
+    /// # fn main() -> Result<(), StorageAllocError> {
+    ///
+    /// let mut v = Vec::<i32, S>::new()?;
+    /// v.extend_from_slice(&[1, 2, 3])?;
     /// assert_eq!(v.pop(), Some(3));
     /// assert_eq!(v.pop(), Some(2));
-    /// v.push(4).unwrap();
+    /// v.push(4)?;
     /// assert_eq!(v.pop(), Some(4));
     /// assert_eq!(v.pop(), Some(1));
     /// assert_eq!(v.pop(), None); // its empty
     /// assert_eq!(&*v, &[]);
+    ///
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn pop(&mut self) -> Option<T> {
         if self.length == 0 {
@@ -312,16 +331,23 @@ impl<T, S: Storage> Vec<T, S> {
     ///
     /// ```
     /// use storage_api::{Vec, InlineStorage};
+    /// # use storage_api::StorageAllocError;
     ///
-    /// let storage = InlineStorage::<[i32; 3]>::new(); // a storage with room for 3 `i32`s
-    /// let mut v = Vec::new_in(storage).unwrap();
-    /// v.extend_from_slice(&[1, 2, 3]).unwrap();
+    /// type S = InlineStorage<[i32; 3]>; // a storage with room for 3 `i32`s
+    ///
+    /// # fn main() -> Result<(), StorageAllocError> {
+    ///
+    /// let mut v = Vec::<i32, S>::new()?;
+    /// v.extend_from_slice(&[1, 2, 3])?;
     /// assert_eq!(v.remove(3), None); // out of range
     /// assert_eq!(v.remove(1), Some(2));
     /// assert_eq!(v.remove(0), Some(1));
     /// assert_eq!(v.remove(0), Some(3));
     /// assert_eq!(v.remove(0), None); // empty
     /// assert_eq!(&*v, &[]);
+    ///
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn remove(&mut self, index: usize) -> Option<T> {
         if index >= self.length {
@@ -347,6 +373,12 @@ pub struct PushError<T> {
     pub alloc_error: StorageAllocError,
 }
 
+impl<T> From<PushError<T>> for StorageAllocError {
+    fn from(_: PushError<T>) -> Self {
+        StorageAllocError
+    }
+}
+
 /// The error returned by [`Vec::insert`]
 #[derive(Debug, PartialEq, Eq)]
 pub struct InsertError<T> {
@@ -356,6 +388,12 @@ pub struct InsertError<T> {
     pub alloc_error: Option<StorageAllocError>,
 }
 
+impl<T> From<InsertError<T>> for StorageAllocError {
+    fn from(_: InsertError<T>) -> Self {
+        StorageAllocError
+    }
+}
+
 impl<T: Copy, S: Storage> Vec<T, S> {
     /// Appends the elements of a slice to the end of the [`Vec`]
     ///
@@ -363,13 +401,19 @@ impl<T: Copy, S: Storage> Vec<T, S> {
     /// use storage_api::{Vec, InlineStorage};
     /// # use storage_api::StorageAllocError;
     ///
-    /// let storage = InlineStorage::<[i32; 3]>::new(); // a storage with room for 3 `i32`s
-    /// let mut v = Vec::new_in(storage).unwrap();
+    /// type S = InlineStorage<[i32; 3]>; // a storage with room for 3 `i32`s
+    ///
+    /// # fn main() -> Result<(), StorageAllocError> {
+    ///
+    /// let mut v = Vec::<i32, S>::new()?;
     /// assert_eq!(v.extend_from_slice(&[1, 2]), Ok(&mut [1, 2] as _));
-    /// v.remove(1).unwrap();
+    /// v.remove(1);
     /// assert_eq!(v.extend_from_slice(&[3, 4]), Ok(&mut [3, 4] as _));
     /// assert_eq!(v.extend_from_slice(&[5]), Err(StorageAllocError)); // not enough room
     /// assert_eq!(&*v, &[1, 3, 4]);
+    ///
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn extend_from_slice(&mut self, values: &[T]) -> Result<&mut [T], StorageAllocError> {
         let index = self.length;

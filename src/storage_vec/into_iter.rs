@@ -9,7 +9,7 @@ use crate::{Storage, storage_vec::Vec};
 /// ```
 /// use storage_api::Vec;
 ///
-/// let mut v = Vec::new().unwrap();
+/// let mut v = Vec::<i32>::new().unwrap();
 /// v.extend_from_slice(&[1, 2, 3]);
 /// v.extend_from_slice(&[4, 5, 6]);
 /// let mut count = v.len();

@@ -16,7 +16,7 @@ impl StorageHandle for GlobalHandle {}
 /// This represents the global allocator registered with the `#[global_allocator]` attribute
 ///
 /// See [`GlobalAlloc`](alloc::alloc::GlobalAlloc) for more info
-#[derive(Clone, Copy)]
+#[derive(Default, Clone, Copy)]
 pub struct Global;
 
 unsafe impl Storage for Global {

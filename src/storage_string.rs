@@ -11,17 +11,17 @@ pub struct String<S: Storage = Global> {
     vec: Vec<u8, S>,
 }
 
-impl String {
-    /// [`String::new_in`] but with the [`Global`] storage
+impl<S: Storage + Default> String<S> {
+    /// [`String::new_in`] but using [`Default::default`] for the [`Storage`]
     ///
     /// This is the same as [`String::with_capacity(0)`](String::with_capacity)
     pub fn new() -> Result<Self, StorageAllocError> {
-        Self::new_in(Global)
+        Self::new_in(Default::default())
     }
 
-    /// [`String::with_capacity_in`] but with the [`Global`] storage
+    /// [`String::with_capacity_in`] but using [`Default::default`] for the [`Storage`]
     pub fn with_capacity(capacity: usize) -> Result<Self, StorageAllocError> {
-        Self::with_capacity_in(capacity, Global)
+        Self::with_capacity_in(capacity, Default::default())
     }
 }
 
