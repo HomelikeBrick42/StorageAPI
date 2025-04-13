@@ -1,5 +1,9 @@
 # Storage API
 
+[![Latest Version](https://img.shields.io/crates/v/storage_api.svg)](https://crates.io/crates/storage_api)
+[![Rust Documentation](https://docs.rs/thallium/badge.svg)](https://docs.rs/storage_api)
+![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)
+
 This is an implementation of the `Storage` API, a better version of the `Allocator` API, and data structures made for them including
 
 - `Box`
