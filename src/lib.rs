@@ -106,6 +106,8 @@ pub unsafe trait Storage {
     ) -> Result<(Self::Handle, usize), StorageAllocError>;
 }
 
+/// A marker trait related to [`Storage`] that guarentees that multiple allocations can be made from a [`Storage`] without invalidating old ones
+///
 /// # Safety
 /// This trait can only be implemented if calling [`Storage::allocate`] will not invalidate previous allocations
 pub unsafe trait MultipleStorage: Storage {}
