@@ -17,12 +17,24 @@ pub use storage_box::Box;
 pub use storage_string::String;
 pub use storage_vec::Vec;
 
-pub mod global_storage;
-pub mod inline_storage;
-pub mod slot_storage;
-pub mod storage_box;
-pub mod storage_string;
-pub mod storage_vec;
+mod global_storage;
+mod inline_storage;
+mod slot_storage;
+mod storage_box;
+mod storage_string;
+mod storage_vec;
+
+pub mod storages {
+    pub use crate::global_storage::{Global, GlobalHandle};
+    pub use crate::inline_storage::{InlineStorage, InlineStorageHandle};
+    pub use crate::slot_storage::{SlotStorage, SlotStorageHandle};
+}
+
+pub mod collections {
+    pub use crate::storage_box::Box;
+    pub use crate::storage_string::String;
+    pub use crate::storage_vec::Vec;
+}
 
 use core::{alloc::Layout, fmt::Debug, hash::Hash, ptr::NonNull};
 
