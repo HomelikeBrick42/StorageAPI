@@ -33,12 +33,12 @@ pub mod storages {
 pub mod collections {
     pub use crate::storage_box::Box;
     pub use crate::storage_string::String;
-    pub use crate::storage_vec::Vec;
+    pub use crate::storage_vec::{InsertError, PushError, Vec};
 }
 
 use core::{alloc::Layout, fmt::Debug, hash::Hash, ptr::NonNull};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StorageAllocError;
 
 pub trait StorageHandle: Debug + Eq + Ord + Hash {}
