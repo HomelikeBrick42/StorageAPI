@@ -17,14 +17,14 @@ pub struct Vec<T, S: Storage = Global> {
 }
 
 impl<T> Vec<T> {
-    /// [`Vec::new_in`] but with the [`Global`] allocator
+    /// [`Vec::new_in`] but with the [`Global`] storage
     ///
     /// This is the same as [`Vec::with_capacity(0)`](Vec::with_capacity)
     pub fn new() -> Result<Self, StorageAllocError> {
         Self::new_in(Global)
     }
 
-    /// [`Vec::with_capacity_in`] but with the [`Global`] allocator
+    /// [`Vec::with_capacity_in`] but with the [`Global`] storage
     pub fn with_capacity(capacity: usize) -> Result<Self, StorageAllocError> {
         Self::with_capacity_in(capacity, Global)
     }

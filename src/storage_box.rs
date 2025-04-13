@@ -7,6 +7,9 @@ use core::{
     ptr::{NonNull, Pointee},
 };
 
+/// A type that owns a single `T` allocated in a [`Storage`]
+///
+/// This currently stores an extra dangling non-null pointer, so that [`CoerceUnsized`] can attach metadata to it when this [`Box`] get unsized
 pub struct Box<T: ?Sized, S: Storage = Global> {
     handle: ManuallyDrop<S::Handle>,
     storage: S,
@@ -31,12 +34,14 @@ where
 }
 
 impl<T> Box<T> {
+    /// [`Box::new_in`] but with the [`Global`] storage
     pub fn new(value: T) -> Result<Self, StorageAllocError> {
         Self::new_in(value, Global)
     }
 }
 
 impl<T, S: Storage> Box<T, S> {
+    /// Allocates room for a `T` in `storage` and moves `value` into it
     pub fn new_in(value: T, storage: S) -> Result<Self, StorageAllocError> {
         let (handle, _) = storage.allocate(Layout::new::<T>())?;
         unsafe {
@@ -45,6 +50,7 @@ impl<T, S: Storage> Box<T, S> {
         }
     }
 
+    /// Moves the `T` out of this [`Box`]
     pub fn into_inner(self) -> T {
         unsafe {
             let value = self.as_ptr().read();
@@ -56,8 +62,13 @@ impl<T, S: Storage> Box<T, S> {
 }
 
 impl<T: ?Sized, S: Storage> Box<T, S> {
+    /// Reconstructs a [`Box`] from a [`Storage`], [`Storage::Handle`], and [`Pointee::Metadata`]
+    ///
+    /// The opposite of [`Box::into_raw_parts`]
+    ///
     /// # Safety
-    /// TODO
+    /// - `handle` must represent a valid allocation in `storage` of `size_of::<T>()` bytes
+    /// - `metadata` must be a valid pointer metadata for the `T` that `handle` represents
     pub unsafe fn from_raw_parts(
         storage: S,
         handle: S::Handle,
@@ -71,6 +82,9 @@ impl<T: ?Sized, S: Storage> Box<T, S> {
         }
     }
 
+    /// Splits the [`Box`] into its [`Storage`], [`Storage::Handle`], and [`Pointee::Metadata`]
+    ///
+    /// The opposite of [`Box::from_raw_parts`]
     pub fn into_raw_parts(b: Self) -> (S, S::Handle, <T as Pointee>::Metadata) {
         unsafe {
             let mut this = ManuallyDrop::new(b);
@@ -82,6 +96,7 @@ impl<T: ?Sized, S: Storage> Box<T, S> {
         }
     }
 
+    /// Gets a [`NonNull<T>`] to the `T` stored in this [`Box`]
     pub fn as_ptr(&self) -> NonNull<T> {
         let ptr = unsafe { self.storage.resolve(&self.handle) };
         NonNull::from_raw_parts(ptr, core::ptr::metadata(self.metadata_ptr.as_ptr()))
