@@ -10,19 +10,19 @@
     dropck_eyepatch
 )]
 
-pub use global_storage::*;
-pub use inline_storage::*;
-pub use slot_storage::*;
-pub use storage_box::*;
-pub use storage_string::*;
-pub use storage_vec::*;
+pub use global_storage::Global;
+pub use inline_storage::InlineStorage;
+pub use slot_storage::SlotStorage;
+pub use storage_box::Box;
+pub use storage_string::String;
+pub use storage_vec::Vec;
 
-mod global_storage;
-mod inline_storage;
-mod slot_storage;
-mod storage_box;
-mod storage_string;
-mod storage_vec;
+pub mod global_storage;
+pub mod inline_storage;
+pub mod slot_storage;
+pub mod storage_box;
+pub mod storage_string;
+pub mod storage_vec;
 
 use core::{alloc::Layout, fmt::Debug, hash::Hash, ptr::NonNull};
 
