@@ -7,6 +7,7 @@ use core::{
     ptr::NonNull,
 };
 
+/// A collection for managing a list of elements
 pub struct Vec<T, S: Storage = Global> {
     handle: ManuallyDrop<S::Handle>,
     length: usize,
@@ -178,7 +179,7 @@ impl<T, S: Storage> Vec<T, S> {
         Ok(())
     }
 
-    /// Converts a [`Vec<T, S>`] to [`Box<[T], S>`](crate::Box), discarding any extra capacity
+    /// Converts a [`Vec<T, S>`] to [`Box<[T], S>`](Box), discarding any extra capacity
     pub fn into_boxed_slice(mut self) -> Result<Box<[T], S>, StorageAllocError> {
         unsafe {
             self.shrink_to_fit()?;
@@ -388,14 +389,17 @@ unsafe impl<#[may_dangle] T, S: Storage> Drop for Vec<T, S> {
 /// The error returned by [`Vec::push`]
 #[derive(Debug, PartialEq, Eq)]
 pub struct PushError<T> {
+    /// The value that was attempted to be pushed
     pub value: T,
+    /// The allocation error
     pub alloc_error: StorageAllocError,
 }
 
 /// The error returned by [`Vec::insert`]
 #[derive(Debug, PartialEq, Eq)]
 pub struct InsertError<T> {
+    /// The value that was attempted to be inserted
     pub value: T,
-    /// this is [`None`] if the index to insert was out of range
+    /// this is [`None`] if the index to insert was out of range, otherwise its [`Some`] with the allocation error
     pub alloc_error: Option<StorageAllocError>,
 }
