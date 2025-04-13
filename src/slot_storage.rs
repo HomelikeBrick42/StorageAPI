@@ -1,6 +1,7 @@
 use crate::{Storage, StorageAllocError, StorageHandle};
 use core::{alloc::Layout, cell::UnsafeCell, mem::MaybeUninit, ptr::NonNull};
 
+/// The [`StorageHandle`] for [`SlotStorage`]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SlotStorageHandle {
     offset: usize,
@@ -8,6 +9,10 @@ pub struct SlotStorageHandle {
 
 impl StorageHandle for SlotStorageHandle {}
 
+/// Represents a buffer of bytes that can be allocated from
+///
+/// This is similar to [`InlineStorage`](crate::InlineStorage) but because it doesnt store its buffer directly,
+/// it can potentially allocate memory with large alignments that are not known at compile time
 pub struct SlotStorage<'a> {
     storage: &'a mut UnsafeCell<[MaybeUninit<u8>]>,
 }
