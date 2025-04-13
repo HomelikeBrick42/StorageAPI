@@ -13,8 +13,8 @@ pub mod global_storage;
 pub mod inline_storage;
 pub mod slot_storage;
 pub mod storage_box;
-pub mod storage_vec;
 pub mod storage_string;
+pub mod storage_vec;
 
 use core::{alloc::Layout, fmt::Debug, hash::Hash, ptr::NonNull};
 
