@@ -38,14 +38,30 @@ impl<T, S: Storage + Default> Box<T, S> {
     pub fn new(value: T) -> Result<Self, StorageAllocError> {
         Self::new_in(value, Default::default())
     }
+
+    /// [`Box::new_with_in`] but using [`Default::default`] for the [`Storage`]
+    ///
+    /// This function has an advantage over [`Box::new`] for large objects where because the allocation is done *before* `f` is called,
+    /// the stack space for the return value of `f` may be elided by the compiler
+    pub fn new_with(f: impl FnOnce() -> T) -> Result<Self, StorageAllocError> {
+        Self::new_with_in(f, Default::default())
+    }
 }
 
 impl<T, S: Storage> Box<T, S> {
     /// Allocates room for a `T` in `storage` and moves `value` into it
     pub fn new_in(value: T, storage: S) -> Result<Self, StorageAllocError> {
+        Self::new_with_in(|| value, storage)
+    }
+
+    /// Allocates room for a `T` in `storage` and constructs `value` into it
+    ///
+    /// This function has an advantage over [`Box::new_in`] for large objects where because the allocation is done *before* `f` is called,
+    /// the stack space for the return value of `f` may be elided by the compiler
+    pub fn new_with_in(f: impl FnOnce() -> T, storage: S) -> Result<Self, StorageAllocError> {
         let (handle, _) = storage.allocate(Layout::new::<T>())?;
         unsafe {
-            storage.resolve(&handle).cast::<T>().write(value);
+            storage.resolve(&handle).cast::<T>().write(f());
             Ok(Self::from_raw_parts(storage, handle, ()))
         }
     }
