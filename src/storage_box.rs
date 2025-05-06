@@ -242,3 +242,27 @@ where
     S: Storage,
 {
 }
+
+#[cfg(feature = "nightly")]
+impl<S: Storage> Box<dyn core::any::Any, S> {
+    /// Attempts to downcast the [`dyn Any`](core::any::Any) to a `T`
+    pub fn downcast<T: 'static>(b: Self) -> Result<Box<T, S>, Self> {
+        if b.is::<T>() {
+            Ok(unsafe { Self::downcast_unchecked(b) })
+        } else {
+            Err(b)
+        }
+    }
+
+    /// Downcasts the [`dyn Any`](core::any::Any) to a `T`, without any checks
+    ///
+    /// The safe version of this function is [`Box::downcast`]
+    ///
+    /// # Safety
+    /// The contained value must be of type `T`
+    pub unsafe fn downcast_unchecked<T: 'static>(b: Self) -> Box<T, S> {
+        debug_assert!(b.is::<T>());
+        let (storage, handle, _) = Self::into_raw_parts(b);
+        unsafe { Box::from_raw_parts(storage, handle, ()) }
+    }
+}
