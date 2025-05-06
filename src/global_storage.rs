@@ -28,7 +28,12 @@ unsafe impl Storage for Global {
 
     fn allocate(&self, layout: Layout) -> Result<(Self::Handle, usize), StorageAllocError> {
         match layout.size() {
-            0 => Ok((GlobalHandle(layout.dangling().cast()), 0)),
+            0 => Ok((
+                GlobalHandle(unsafe {
+                    NonNull::new_unchecked(core::ptr::without_provenance_mut(layout.align()))
+                }),
+                0,
+            )),
             size => match NonNull::new(unsafe { alloc::alloc::alloc(layout) }.cast()) {
                 Some(ptr) => Ok((GlobalHandle(ptr), size)),
                 None => Err(StorageAllocError),

@@ -1,8 +1,8 @@
+use crate::{Storage, storage_vec::Vec};
+use cfg_if::cfg_if;
 use core::{
     alloc::Layout, iter::FusedIterator, marker::PhantomData, mem::ManuallyDrop, ptr::NonNull,
 };
-
-use crate::{Storage, storage_vec::Vec};
 
 /// Owning iterator over a [`Vec`]
 ///
@@ -132,14 +132,28 @@ impl<T, S: Storage> DoubleEndedIterator for VecIntoIter<T, S> {
 impl<T, S: Storage> ExactSizeIterator for VecIntoIter<T, S> {}
 impl<T, S: Storage> FusedIterator for VecIntoIter<T, S> {}
 
-unsafe impl<#[may_dangle] T, S: Storage> Drop for VecIntoIter<T, S> {
-    fn drop(&mut self) {
-        unsafe {
-            core::ptr::drop_in_place(self.as_mut_slice());
-            self.storage.deallocate(
-                Layout::array::<T>(self.capacity).unwrap_unchecked(),
-                ManuallyDrop::take(&mut self.handle),
-            );
+unsafe fn drop<T, S: Storage>(v: &mut VecIntoIter<T, S>) {
+    unsafe {
+        core::ptr::drop_in_place(v.as_mut_slice());
+        v.storage.deallocate(
+            Layout::array::<T>(v.capacity).unwrap_unchecked(),
+            ManuallyDrop::take(&mut v.handle),
+        );
+    }
+}
+
+cfg_if! {
+    if #[cfg(feature = "nightly")] {
+        unsafe impl<#[may_dangle] T, S: Storage> Drop for VecIntoIter<T, S> {
+            fn drop(&mut self) {
+                unsafe { drop(self) }
+            }
+        }
+    } else {
+        impl<T, S: Storage> Drop for VecIntoIter<T, S> {
+            fn drop(&mut self) {
+                unsafe { drop(self) }
+            }
         }
     }
 }

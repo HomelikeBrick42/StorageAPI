@@ -1,13 +1,17 @@
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
 #![no_std]
-#![feature(
-    ptr_metadata,
-    layout_for_ptr,
-    alloc_layout_extra,
-    unsize,
-    coerce_unsized,
-    dispatch_from_dyn,
-    dropck_eyepatch
+#![cfg_attr(
+    feature = "nightly",
+    feature(
+        ptr_metadata,
+        layout_for_ptr,
+        alloc_layout_extra,
+        unsize,
+        coerce_unsized,
+        dispatch_from_dyn,
+        dropck_eyepatch
+    )
 )]
 
 pub use global_storage::Global;

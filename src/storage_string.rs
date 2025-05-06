@@ -1,6 +1,4 @@
-use crate::{
-    Storage, StorageAllocError, global_storage::Global, storage_box::Box, storage_vec::Vec,
-};
+use crate::{Storage, StorageAllocError, global_storage::Global, storage_vec::Vec};
 use core::{
     ops::{Deref, DerefMut},
     str::FromStr,
@@ -96,11 +94,13 @@ impl<S: Storage> String<S> {
         self.vec.shrink_to_fit()
     }
 
-    /// Converts a [`String<S>`] to [`Box<str, S>`](Box), discarding any extra capacity
-    pub fn into_boxed_str(self) -> Result<Box<str, S>, StorageAllocError> {
+    #[cfg(feature = "nightly")]
+    /// Converts a [`String<S>`] to [`Box<str, S>`](crate::Box), discarding any extra capacity
+    pub fn into_boxed_str(self) -> Result<crate::Box<str, S>, StorageAllocError> {
         unsafe {
-            let (storage, handle, length) = Box::into_raw_parts(self.vec.into_boxed_slice()?);
-            Ok(Box::from_raw_parts(storage, handle, length))
+            let (storage, handle, length) =
+                crate::Box::into_raw_parts(self.vec.into_boxed_slice()?);
+            Ok(crate::Box::from_raw_parts(storage, handle, length))
         }
     }
 
@@ -133,7 +133,7 @@ impl<S: Storage> String<S> {
     /// ```
     pub fn push_str(&mut self, s: &str) -> Result<&mut str, StorageAllocError> {
         unsafe {
-            Ok(str::from_utf8_unchecked_mut(
+            Ok(core::str::from_utf8_unchecked_mut(
                 self.vec.extend_from_slice(s.as_bytes())?,
             ))
         }
@@ -141,12 +141,12 @@ impl<S: Storage> String<S> {
 
     /// Returns a string slice referencing this [`String`]
     pub fn as_str(&self) -> &str {
-        unsafe { str::from_utf8_unchecked(&self.vec) }
+        unsafe { core::str::from_utf8_unchecked(&self.vec) }
     }
 
     /// Returns a mutable string slice referencing this [`String`]
     pub fn as_mut_str(&mut self) -> &mut str {
-        unsafe { str::from_utf8_unchecked_mut(&mut self.vec) }
+        unsafe { core::str::from_utf8_unchecked_mut(&mut self.vec) }
     }
 }
 

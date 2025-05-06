@@ -1,8 +1,9 @@
+use cfg_if::cfg_if;
 pub use into_iter::VecIntoIter;
 
 mod into_iter;
 
-use crate::{Storage, StorageAllocError, global_storage::Global, storage_box::Box};
+use crate::{Storage, StorageAllocError, global_storage::Global};
 use core::{
     alloc::Layout,
     marker::PhantomData,
@@ -183,23 +184,34 @@ impl<T, S: Storage> Vec<T, S> {
         Ok(())
     }
 
-    /// Converts a [`Vec<T, S>`] to [`Box<[T], S>`](Box), discarding any extra capacity
-    pub fn into_boxed_slice(mut self) -> Result<Box<[T], S>, StorageAllocError> {
+    #[cfg(feature = "nightly")]
+    /// Converts a [`Vec<T, S>`] to [`Box<[T], S>`](crate::Box), discarding any extra capacity
+    pub fn into_boxed_slice(mut self) -> Result<crate::Box<[T], S>, StorageAllocError> {
         unsafe {
             self.shrink_to_fit()?;
             let (storage, handle, length, _) = Self::into_raw_parts(self);
-            Ok(Box::from_raw_parts(storage, handle, length))
+            Ok(crate::Box::from_raw_parts(storage, handle, length))
         }
     }
 
     /// Returns a slice referencing the initialised elements of this [`Vec`]
     pub fn as_slice(&self) -> &[T] {
-        unsafe { NonNull::from_raw_parts(self.storage.resolve(&self.handle), self.length).as_ref() }
+        unsafe {
+            core::slice::from_raw_parts(
+                self.storage.resolve(&self.handle).as_ptr().cast(),
+                self.length,
+            )
+        }
     }
 
     /// Returns a mutable slice referencing the initialised elements of this [`Vec`]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { NonNull::from_raw_parts(self.storage.resolve(&self.handle), self.length).as_mut() }
+        unsafe {
+            core::slice::from_raw_parts_mut(
+                self.storage.resolve(&self.handle).as_ptr().cast(),
+                self.length,
+            )
+        }
     }
 }
 
@@ -428,14 +440,28 @@ impl<T: Copy, S: Storage> Vec<T, S> {
     }
 }
 
-unsafe impl<#[may_dangle] T, S: Storage> Drop for Vec<T, S> {
-    fn drop(&mut self) {
-        unsafe {
-            core::ptr::drop_in_place(self.as_mut_slice());
-            self.storage.deallocate(
-                Layout::array::<T>(self.capacity).unwrap_unchecked(),
-                ManuallyDrop::take(&mut self.handle),
-            );
+unsafe fn drop<T, S: Storage>(v: &mut Vec<T, S>) {
+    unsafe {
+        core::ptr::drop_in_place(v.as_mut_slice());
+        v.storage.deallocate(
+            Layout::array::<T>(v.capacity).unwrap_unchecked(),
+            ManuallyDrop::take(&mut v.handle),
+        );
+    }
+}
+
+cfg_if! {
+    if #[cfg(feature = "nightly")] {
+        unsafe impl<#[may_dangle] T, S: Storage> Drop for Vec<T, S> {
+            fn drop(&mut self) {
+                unsafe { drop(self) }
+            }
+        }
+    } else {
+        impl<T, S: Storage> Drop for Vec<T, S> {
+            fn drop(&mut self) {
+                unsafe { drop(self) }
+            }
         }
     }
 }

@@ -14,7 +14,7 @@ impl StorageHandle for SlotStorageHandle {}
 /// This is similar to [`InlineStorage`](crate::InlineStorage) but because it doesnt store its buffer directly,
 /// it can potentially allocate memory with large alignments that are not known at compile time
 pub struct SlotStorage<'a> {
-    storage: &'a mut UnsafeCell<[MaybeUninit<u8>]>,
+    storage: &'a [UnsafeCell<MaybeUninit<u8>>],
 }
 
 unsafe impl Send for SlotStorage<'_> {}
@@ -23,7 +23,9 @@ unsafe impl Storage for SlotStorage<'_> {
     type Handle = SlotStorageHandle;
 
     unsafe fn resolve(&self, handle: &Self::Handle) -> NonNull<()> {
-        unsafe { NonNull::new_unchecked(self.storage.get().byte_add(handle.offset)).cast() }
+        unsafe {
+            NonNull::new_unchecked(self.storage.as_ptr().byte_add(handle.offset).cast_mut()).cast()
+        }
     }
 
     fn allocate(&self, layout: Layout) -> Result<(Self::Handle, usize), StorageAllocError> {
@@ -33,7 +35,9 @@ unsafe impl Storage for SlotStorage<'_> {
             return Err(StorageAllocError);
         }
 
-        let size = core::ptr::metadata(self.storage)
+        let size = self
+            .storage
+            .len()
             .checked_sub(offset)
             .ok_or(StorageAllocError)?;
 
