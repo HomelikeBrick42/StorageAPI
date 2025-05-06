@@ -4,6 +4,8 @@
 [![Rust Documentation](https://docs.rs/storage_api/badge.svg)](https://docs.rs/storage_api)
 ![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)
 
+Note: This crate currently requires using nightly by default, unless you make `default-features = false`, this is so `Box` can support `T: ?Sized`
+
 This is an implementation of the `Storage` API, a better version of the `Allocator` API, and data structures made for them including
 
 - `Box`
