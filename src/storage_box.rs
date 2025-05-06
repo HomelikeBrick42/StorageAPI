@@ -135,7 +135,7 @@ impl<T: ?Sized> Pointee for T {
 
 impl_maybe_unsized_methods! {
     impl {
-        /// Reconstructs a [`Box`] from a [`Storage`], [`Storage::Handle`], and [`Pointee::Metadata`]
+        /// Reconstructs a [`Box`] from a [`Storage`], [`Storage::Handle`], and [`Pointee::Metadata`](core::ptr::Pointee::Metadata)
         ///
         /// The opposite of [`Box::into_raw_parts`]
         ///
@@ -157,7 +157,7 @@ impl_maybe_unsized_methods! {
             }
         }
 
-        /// Splits the [`Box`] into its [`Storage`], [`Storage::Handle`], and [`Pointee::Metadata`]
+        /// Splits the [`Box`] into its [`Storage`], [`Storage::Handle`], and [`Pointee::Metadata`](core::ptr::Pointee::Metadata)
         ///
         /// The opposite of [`Box::from_raw_parts`]
         pub fn into_raw_parts(b: Self) -> (S, S::Handle, <T as Pointee>::Metadata) {

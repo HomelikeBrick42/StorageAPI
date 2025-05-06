@@ -28,14 +28,14 @@ mod storage_box;
 mod storage_string;
 mod storage_vec;
 
-/// The types that implement [`Storage`](crate::Storage)
+/// The types that implement [`Storage`]
 pub mod storages {
     pub use crate::global_storage::{Global, GlobalHandle};
     pub use crate::inline_storage::{InlineStorage, InlineStorageHandle};
     pub use crate::slot_storage::{SlotStorage, SlotStorageHandle};
 }
 
-/// The collections that use a [`Storage`](crate::Storage) for their backing data
+/// The collections that use a [`Storage`] for their backing data
 pub mod collections {
     pub use crate::storage_box::Box;
     pub use crate::storage_string::String;
