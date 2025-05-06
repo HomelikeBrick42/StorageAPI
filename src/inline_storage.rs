@@ -3,7 +3,7 @@ use core::{alloc::Layout, cell::UnsafeCell, mem::MaybeUninit, ptr::NonNull};
 
 /// The [`StorageHandle`] for [`InlineStorage`],
 /// this is a ZST
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InlineStorageHandle(());
 
 impl StorageHandle for InlineStorageHandle {}
@@ -25,7 +25,7 @@ impl<T> InlineStorage<T> {
 unsafe impl<T> Storage for InlineStorage<T> {
     type Handle = InlineStorageHandle;
 
-    unsafe fn resolve(&self, InlineStorageHandle(()): &Self::Handle) -> NonNull<()> {
+    unsafe fn resolve(&self, InlineStorageHandle(()): Self::Handle) -> NonNull<()> {
         unsafe { NonNull::new_unchecked(self.0.get().cast()) }
     }
 
@@ -45,7 +45,7 @@ unsafe impl<T> Storage for InlineStorage<T> {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        old_alloc: &Self::Handle,
+        old_alloc: Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError> {
         _ = old_layout;
         _ = old_alloc;
@@ -56,11 +56,11 @@ unsafe impl<T> Storage for InlineStorage<T> {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        InlineStorageHandle(()): &Self::Handle,
+        InlineStorageHandle(()): Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError> {
         _ = old_layout;
         _ = new_layout;
-        Ok((InlineStorageHandle(()), size_of::<T>()))
+        self.allocate(new_layout)
     }
 }
 

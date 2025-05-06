@@ -5,7 +5,7 @@ use core::{alloc::Layout, ptr::NonNull};
 
 /// The [`StorageHandle`] for [`Global`],
 /// this is a wrapper around a [`NonNull<()>`]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GlobalHandle(pub NonNull<()>);
 
 unsafe impl Send for GlobalHandle {}
@@ -22,7 +22,7 @@ pub struct Global;
 unsafe impl Storage for Global {
     type Handle = GlobalHandle;
 
-    unsafe fn resolve(&self, handle: &Self::Handle) -> NonNull<()> {
+    unsafe fn resolve(&self, handle: Self::Handle) -> NonNull<()> {
         handle.0
     }
 
@@ -52,7 +52,7 @@ unsafe impl Storage for Global {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: &Self::Handle,
+        handle: Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError> {
         unsafe { self.realloc(old_layout, new_layout, handle.0) }
     }
@@ -61,7 +61,7 @@ unsafe impl Storage for Global {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: &Self::Handle,
+        handle: Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError> {
         unsafe { self.realloc(old_layout, new_layout, handle.0) }
     }

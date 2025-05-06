@@ -14,7 +14,7 @@ use core::{
 
 /// A collection for managing a list of elements
 pub struct Vec<T, S: Storage = Global> {
-    handle: ManuallyDrop<S::Handle>,
+    handle: S::Handle,
     length: usize,
     capacity: usize,
     storage: S,
@@ -51,7 +51,7 @@ impl<T, S: Storage> Vec<T, S> {
         let (handle, capacity_in_bytes) =
             storage.allocate(Layout::array::<T>(capacity).map_err(|_| StorageAllocError)?)?;
         Ok(Self {
-            handle: ManuallyDrop::new(handle),
+            handle,
             length: 0,
             capacity: capacity_in_bytes
                 .checked_div(size_of::<T>())
@@ -81,7 +81,7 @@ impl<T, S: Storage> Vec<T, S> {
         capacity: usize,
     ) -> Self {
         Self {
-            handle: ManuallyDrop::new(handle),
+            handle,
             length,
             capacity,
             storage,
@@ -94,10 +94,10 @@ impl<T, S: Storage> Vec<T, S> {
     /// The opposite of [`Vec::from_raw_parts`]
     pub fn into_raw_parts(self) -> (S, S::Handle, usize, usize) {
         unsafe {
-            let mut this = ManuallyDrop::new(self);
+            let this = ManuallyDrop::new(self);
             (
                 core::ptr::read(&this.storage),
-                ManuallyDrop::take(&mut this.handle),
+                this.handle,
                 this.length,
                 this.capacity,
             )
@@ -121,14 +121,14 @@ impl<T, S: Storage> Vec<T, S> {
         }
 
         let new_layout = Layout::array::<T>(new_capacity).map_err(|_| StorageAllocError)?;
-        let (new_handle, capacity_in_bytes) = unsafe {
+        let capacity_in_bytes;
+        (self.handle, capacity_in_bytes) = unsafe {
             self.storage.grow(
                 Layout::array::<T>(self.capacity).unwrap_unchecked(),
                 new_layout,
-                &self.handle,
+                self.handle,
             )?
         };
-        *self.handle = new_handle;
         self.capacity = capacity_in_bytes
             .checked_div(size_of::<T>())
             .unwrap_or(usize::MAX);
@@ -169,14 +169,14 @@ impl<T, S: Storage> Vec<T, S> {
             return Ok(());
         }
 
-        let (new_handle, capacity_in_bytes) = unsafe {
+        let capacity_in_bytes;
+        (self.handle, capacity_in_bytes) = unsafe {
             self.storage.shrink(
                 Layout::array::<T>(self.capacity).unwrap_unchecked(),
                 Layout::array::<T>(self.length).unwrap_unchecked(),
-                &self.handle,
+                self.handle,
             )?
         };
-        *self.handle = new_handle;
         self.capacity = capacity_in_bytes
             .checked_div(size_of::<T>())
             .unwrap_or(usize::MAX);
@@ -198,7 +198,7 @@ impl<T, S: Storage> Vec<T, S> {
     pub fn as_slice(&self) -> &[T] {
         unsafe {
             core::slice::from_raw_parts(
-                self.storage.resolve(&self.handle).as_ptr().cast(),
+                self.storage.resolve(self.handle).as_ptr().cast(),
                 self.length,
             )
         }
@@ -208,7 +208,7 @@ impl<T, S: Storage> Vec<T, S> {
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         unsafe {
             core::slice::from_raw_parts_mut(
-                self.storage.resolve(&self.handle).as_ptr().cast(),
+                self.storage.resolve(self.handle).as_ptr().cast(),
                 self.length,
             )
         }
@@ -243,7 +243,7 @@ impl<T, S: Storage> Vec<T, S> {
         unsafe {
             let mut ptr = self
                 .storage
-                .resolve(&self.handle)
+                .resolve(self.handle)
                 .cast::<T>()
                 .add(self.length);
 
@@ -291,7 +291,7 @@ impl<T, S: Storage> Vec<T, S> {
         }
 
         unsafe {
-            let mut ptr = self.storage.resolve(&self.handle).cast::<T>().add(index);
+            let mut ptr = self.storage.resolve(self.handle).cast::<T>().add(index);
             ptr.copy_to(ptr.add(1), self.length - index);
             self.length += 1;
             ptr.write(value);
@@ -331,7 +331,7 @@ impl<T, S: Storage> Vec<T, S> {
             self.length -= 1;
             Some(
                 self.storage
-                    .resolve(&self.handle)
+                    .resolve(self.handle)
                     .cast::<T>()
                     .add(self.length)
                     .read(),
@@ -368,7 +368,7 @@ impl<T, S: Storage> Vec<T, S> {
 
         unsafe {
             self.length -= 1;
-            let ptr = self.storage.resolve(&self.handle).cast::<T>().add(index);
+            let ptr = self.storage.resolve(self.handle).cast::<T>().add(index);
             let value = ptr.read();
             ptr.copy_from(ptr.add(1), self.length - index);
             Some(value)
@@ -432,7 +432,7 @@ impl<T: Copy, S: Storage> Vec<T, S> {
         let length = values.len();
         self.reserve(length)?;
         unsafe {
-            let ptr = self.storage.resolve(&self.handle).cast::<T>().add(index);
+            let ptr = self.storage.resolve(self.handle).cast::<T>().add(index);
             ptr.as_ptr().copy_from(values.as_ptr(), length);
             self.length += length;
             Ok(NonNull::slice_from_raw_parts(ptr, length).as_mut())
@@ -443,10 +443,8 @@ impl<T: Copy, S: Storage> Vec<T, S> {
 unsafe fn drop<T, S: Storage>(v: &mut Vec<T, S>) {
     unsafe {
         core::ptr::drop_in_place(v.as_mut_slice());
-        v.storage.deallocate(
-            Layout::array::<T>(v.capacity).unwrap_unchecked(),
-            ManuallyDrop::take(&mut v.handle),
-        );
+        v.storage
+            .deallocate(Layout::array::<T>(v.capacity).unwrap_unchecked(), v.handle);
     }
 }
 

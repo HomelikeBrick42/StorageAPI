@@ -17,7 +17,7 @@ cfg_if! {
         ///
         /// [`Box`] does not support `T: ?Sized` types when not using the `nightly` feature
         pub struct Box<T: ?Sized, S: Storage = Global> {
-            handle: ManuallyDrop<S::Handle>,
+            handle: S::Handle,
             storage: S,
             /// for storing metadata in a way that is compatible with [`CoerceUnsized`], this is an extra pointer but whatever :/
             metadata_ptr: NonNull<T>,
@@ -26,7 +26,7 @@ cfg_if! {
     } else {
         /// A type that owns a single `T` allocated in a [`Storage`]
         pub struct Box<T, S: Storage = Global> {
-            handle: ManuallyDrop<S::Handle>,
+            handle: S::Handle,
             storage: S,
             _data: PhantomData<T>,
         }
@@ -102,7 +102,7 @@ impl<T, S: Storage> Box<T, S> {
     pub fn new_with_in(f: impl FnOnce() -> T, storage: S) -> Result<Self, StorageAllocError> {
         let (handle, _) = storage.allocate(Layout::new::<T>())?;
         unsafe {
-            storage.resolve(&handle).cast::<T>().write(f());
+            storage.resolve(handle).cast::<T>().write(f());
             Ok(Self::from_raw_parts(storage, handle, ()))
         }
     }
@@ -149,7 +149,7 @@ impl_maybe_unsized_methods! {
             metadata: <T as Pointee>::Metadata,
         ) -> Self {
             Self {
-                handle: ManuallyDrop::new(handle),
+                handle,
                 storage,
                 #[cfg(feature = "nightly")]
                 metadata_ptr: NonNull::from_raw_parts(NonNull::<()>::dangling(), metadata),
@@ -162,10 +162,10 @@ impl_maybe_unsized_methods! {
         /// The opposite of [`Box::from_raw_parts`]
         pub fn into_raw_parts(b: Self) -> (S, S::Handle, <T as Pointee>::Metadata) {
             unsafe {
-                let mut this = ManuallyDrop::new(b);
+                let this = ManuallyDrop::new(b);
                 (
                     core::ptr::read(&this.storage),
-                    ManuallyDrop::take(&mut this.handle),
+                    this.handle,
                     {
                         #[cfg(feature = "nightly")]
                         core::ptr::metadata(this.metadata_ptr.as_ptr())
@@ -176,7 +176,7 @@ impl_maybe_unsized_methods! {
 
         /// Gets a [`NonNull<T>`] to the `T` stored in this [`Box`]
         pub fn as_ptr(&self) -> NonNull<T> {
-            let ptr = unsafe { self.storage.resolve(&self.handle) };
+            let ptr = unsafe { self.storage.resolve(self.handle) };
             cfg_if! {
                 if #[cfg(feature = "nightly")] {
                 NonNull::from_raw_parts(ptr, core::ptr::metadata(self.metadata_ptr.as_ptr()))
@@ -197,7 +197,7 @@ cfg_if! {
                     let layout = Layout::for_value_raw(ptr.as_ptr());
                     ptr.drop_in_place();
                     self.storage
-                        .deallocate(layout, ManuallyDrop::take(&mut self.handle));
+                        .deallocate(layout,  self.handle);
                 }
             }
         }

@@ -1,8 +1,6 @@
 use crate::{Storage, storage_vec::Vec};
 use cfg_if::cfg_if;
-use core::{
-    alloc::Layout, iter::FusedIterator, marker::PhantomData, mem::ManuallyDrop, ptr::NonNull,
-};
+use core::{alloc::Layout, iter::FusedIterator, marker::PhantomData, ptr::NonNull};
 
 /// Owning iterator over a [`Vec`]
 ///
@@ -20,7 +18,7 @@ use core::{
 /// assert_eq!(count, 0);
 /// ```
 pub struct VecIntoIter<T, S: Storage> {
-    handle: ManuallyDrop<S::Handle>,
+    handle: S::Handle,
     storage: S,
     start: usize,
     length: usize,
@@ -32,7 +30,7 @@ impl<T, S: Storage> VecIntoIter<T, S> {
     pub(crate) fn new(vec: Vec<T, S>) -> Self {
         let (storage, handle, length, capacity) = vec.into_raw_parts();
         Self {
-            handle: ManuallyDrop::new(handle),
+            handle,
             storage,
             start: 0,
             length,
@@ -46,7 +44,7 @@ impl<T, S: Storage> VecIntoIter<T, S> {
         unsafe {
             NonNull::slice_from_raw_parts(
                 self.storage
-                    .resolve(&self.handle)
+                    .resolve(self.handle)
                     .cast::<T>()
                     .add(self.start),
                 self.length,
@@ -60,7 +58,7 @@ impl<T, S: Storage> VecIntoIter<T, S> {
         unsafe {
             NonNull::slice_from_raw_parts(
                 self.storage
-                    .resolve(&self.handle)
+                    .resolve(self.handle)
                     .cast::<T>()
                     .add(self.start),
                 self.length,
@@ -81,7 +79,7 @@ impl<T, S: Storage> Iterator for VecIntoIter<T, S> {
         unsafe {
             let value = self
                 .storage
-                .resolve(&self.handle)
+                .resolve(self.handle)
                 .cast::<T>()
                 .add(self.start)
                 .read();
@@ -120,7 +118,7 @@ impl<T, S: Storage> DoubleEndedIterator for VecIntoIter<T, S> {
             self.length -= 1;
             Some(
                 self.storage
-                    .resolve(&self.handle)
+                    .resolve(self.handle)
                     .cast::<T>()
                     .add(self.start + self.length)
                     .read(),
@@ -135,10 +133,8 @@ impl<T, S: Storage> FusedIterator for VecIntoIter<T, S> {}
 unsafe fn drop<T, S: Storage>(v: &mut VecIntoIter<T, S>) {
     unsafe {
         core::ptr::drop_in_place(v.as_mut_slice());
-        v.storage.deallocate(
-            Layout::array::<T>(v.capacity).unwrap_unchecked(),
-            ManuallyDrop::take(&mut v.handle),
-        );
+        v.storage
+            .deallocate(Layout::array::<T>(v.capacity).unwrap_unchecked(), v.handle);
     }
 }
 

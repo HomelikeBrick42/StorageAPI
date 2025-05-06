@@ -49,7 +49,7 @@ use core::{alloc::Layout, fmt::Debug, hash::Hash, ptr::NonNull};
 pub struct StorageAllocError;
 
 /// The trait that all [`Storage::Handle`]s must implement
-pub trait StorageHandle: Debug + Eq + Ord + Hash {}
+pub trait StorageHandle: Debug + Eq + Ord + Hash + Copy {}
 
 /// The trait for allocating memory in a storage
 ///
@@ -62,7 +62,7 @@ pub unsafe trait Storage {
     /// Returns a pointer to the allocation represented by `handle`
     /// # Safety
     /// `handle` must be valid
-    unsafe fn resolve(&self, handle: &Self::Handle) -> NonNull<()>;
+    unsafe fn resolve(&self, handle: Self::Handle) -> NonNull<()>;
 
     /// Allocates memory with a layout specified by `layout`
     ///
@@ -91,7 +91,7 @@ pub unsafe trait Storage {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: &Self::Handle,
+        handle: Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError>;
 
     /// Shrinks (decreases the size of) an allocation
@@ -106,7 +106,7 @@ pub unsafe trait Storage {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: &Self::Handle,
+        handle: Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError>;
 }
 
@@ -119,7 +119,7 @@ pub unsafe trait MultipleStorage: Storage {}
 unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
     type Handle = T::Handle;
 
-    unsafe fn resolve(&self, handle: &Self::Handle) -> NonNull<()> {
+    unsafe fn resolve(&self, handle: Self::Handle) -> NonNull<()> {
         unsafe { T::resolve(self, handle) }
     }
 
@@ -135,7 +135,7 @@ unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: &Self::Handle,
+        handle: Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError> {
         unsafe { T::grow(self, old_layout, new_layout, handle) }
     }
@@ -144,7 +144,7 @@ unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: &Self::Handle,
+        handle: Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError> {
         unsafe { T::shrink(self, old_layout, new_layout, handle) }
     }
@@ -155,7 +155,7 @@ unsafe impl<T: MultipleStorage + ?Sized> MultipleStorage for &T {}
 unsafe impl<T: Storage + ?Sized> Storage for &mut T {
     type Handle = T::Handle;
 
-    unsafe fn resolve(&self, handle: &Self::Handle) -> NonNull<()> {
+    unsafe fn resolve(&self, handle: Self::Handle) -> NonNull<()> {
         unsafe { T::resolve(self, handle) }
     }
 
@@ -171,7 +171,7 @@ unsafe impl<T: Storage + ?Sized> Storage for &mut T {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: &Self::Handle,
+        handle: Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError> {
         unsafe { T::grow(self, old_layout, new_layout, handle) }
     }
@@ -180,7 +180,7 @@ unsafe impl<T: Storage + ?Sized> Storage for &mut T {
         &self,
         old_layout: Layout,
         new_layout: Layout,
-        handle: &Self::Handle,
+        handle: Self::Handle,
     ) -> Result<(Self::Handle, usize), StorageAllocError> {
         unsafe { T::shrink(self, old_layout, new_layout, handle) }
     }
