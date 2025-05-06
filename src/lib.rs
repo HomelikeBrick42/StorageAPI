@@ -10,7 +10,11 @@
         unsize,
         coerce_unsized,
         dispatch_from_dyn,
-        dropck_eyepatch
+        dropck_eyepatch,
+        tuple_trait,
+        unboxed_closures,
+        fn_traits,
+        allocator_api
     )
 )]
 

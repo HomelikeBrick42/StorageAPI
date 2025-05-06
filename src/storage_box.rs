@@ -266,3 +266,63 @@ impl<S: Storage> Box<dyn core::any::Any, S> {
         unsafe { Box::from_raw_parts(storage, handle, ()) }
     }
 }
+
+#[cfg(feature = "nightly")]
+impl<Args, F, S> FnOnce<Args> for Box<F, S>
+where
+    Args: core::marker::Tuple,
+    F: FnOnce<Args> + ?Sized,
+    S: Storage,
+{
+    type Output = <F as FnOnce<Args>>::Output;
+
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
+        struct NoopAllocator;
+
+        extern crate alloc;
+
+        unsafe impl alloc::alloc::Allocator for NoopAllocator {
+            fn allocate(&self, _layout: Layout) -> Result<NonNull<[u8]>, core::alloc::AllocError> {
+                Err(core::alloc::AllocError)
+            }
+
+            unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+                _ = ptr;
+                _ = layout;
+            }
+        }
+
+        let (storage, handle, metadata) = Self::into_raw_parts(self);
+        unsafe {
+            let ptr = core::ptr::from_raw_parts_mut(storage.resolve(handle).as_ptr(), metadata);
+            let b = alloc::boxed::Box::<F, NoopAllocator>::from_raw_in(ptr, NoopAllocator);
+            let output = b.call_once(args);
+            storage.deallocate(Layout::for_value_raw(ptr), handle);
+            output
+        }
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<Args, F, S> FnMut<Args> for Box<F, S>
+where
+    Args: core::marker::Tuple,
+    F: FnMut<Args> + ?Sized,
+    S: Storage,
+{
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
+        (**self).call_mut(args)
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<Args, F, S> Fn<Args> for Box<F, S>
+where
+    Args: core::marker::Tuple,
+    F: Fn<Args> + ?Sized,
+    S: Storage,
+{
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output {
+        (**self).call(args)
+    }
+}
