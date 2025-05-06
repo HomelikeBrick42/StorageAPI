@@ -12,7 +12,7 @@ cfg_if! {
     if #[cfg(feature = "nightly")] {
         /// A type that owns a single `T` allocated in a [`Storage`]
         ///
-        /// This currently stores an extra dangling non-null pointer, so that [`CoerceUnsized`] can attach metadata to it when this [`Box`] get unsized
+        /// This currently stores an extra dangling non-null pointer, so that [`CoerceUnsized`](core::ops::CoerceUnsized) can attach metadata to it when this [`Box`] get unsized
         pub struct Box<T: ?Sized, S: Storage = Global> {
             handle: ManuallyDrop<S::Handle>,
             storage: S,
@@ -22,8 +22,6 @@ cfg_if! {
         }
     } else {
         /// A type that owns a single `T` allocated in a [`Storage`]
-        ///
-        /// This currently stores an extra dangling non-null pointer, so that [`CoerceUnsized`] can attach metadata to it when this [`Box`] get unsized
         pub struct Box<T, S: Storage = Global> {
             handle: ManuallyDrop<S::Handle>,
             storage: S,
