@@ -24,6 +24,7 @@ pub use slot_storage::SlotStorage;
 pub use storage_box::Box;
 pub use storage_string::String;
 pub use storage_vec::Vec;
+pub use storage_vecdeque::VecDeque;
 
 mod global_storage;
 mod inline_storage;
@@ -31,6 +32,7 @@ mod slot_storage;
 mod storage_box;
 mod storage_string;
 mod storage_vec;
+mod storage_vecdeque;
 
 /// The types that implement [`Storage`]
 pub mod storages {
@@ -44,6 +46,7 @@ pub mod collections {
     pub use crate::storage_box::Box;
     pub use crate::storage_string::String;
     pub use crate::storage_vec::{InsertError, PushError, Vec, VecIntoIter};
+    pub use crate::storage_vecdeque::VecDeque;
 }
 
 use core::{alloc::Layout, fmt::Debug, hash::Hash, ptr::NonNull};

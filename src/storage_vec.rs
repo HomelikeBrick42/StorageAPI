@@ -376,7 +376,7 @@ impl<T, S: Storage> Vec<T, S> {
     }
 }
 
-/// The error returned by [`Vec::push`]
+/// The error returned by methods that push to [`Vec`] or [`VecDeque`](crate::VecDeque)
 #[derive(Debug, PartialEq, Eq)]
 pub struct PushError<T> {
     /// The value that was attempted to be pushed
@@ -391,7 +391,7 @@ impl<T> From<PushError<T>> for StorageAllocError {
     }
 }
 
-/// The error returned by [`Vec::insert`]
+/// The error returned by methods that insert to [`Vec`] or [`VecDeque`](crate::VecDeque)
 #[derive(Debug, PartialEq, Eq)]
 pub struct InsertError<T> {
     /// The value that was attempted to be inserted
