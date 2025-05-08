@@ -123,7 +123,7 @@ pub unsafe trait MultipleStorage: Storage {}
 /// A marker trait related to [`Storage`] that guarentees that moving the [`Storage`] wont invalidate pointers/references into it
 ///
 /// # Safety
-/// This trait can only be implemented if moving `Self` will not invalidate pointers/references that have been retrived from [`Storage::allocate`] and related allocation methods
+/// This trait can only be implemented if moving `Self` will not invalidate pointers/references that have been retrived from [`Storage::resolve`]
 pub unsafe trait StableStorage: Storage {}
 
 unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
