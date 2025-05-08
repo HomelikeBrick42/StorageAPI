@@ -109,11 +109,24 @@ impl<T, S: Storage> VecDeque<T, S> {
         }
     }
 
+    /// Returns whether this [`VecDeque`] is contiguous
+    pub fn is_contiguous(&self) -> bool {
+        self.head <= self.capacity - self.length
+    }
+
     /// Rearanges the internal storage so that all the elements are in a single slice
     ///
     /// After calling this method, [`VecDeque::as_slices`] and [`VecDeque::as_mut_slices`] will return all the elements in the first slice
     pub fn make_contiguous(&mut self) -> &mut [T] {
-        todo!()
+        unsafe {
+            let ptr = self.storage.resolve(self.handle).cast::<T>().as_ptr();
+
+            if !self.is_contiguous() {
+                todo!()
+            }
+
+            core::slice::from_raw_parts_mut(ptr.add(self.head), self.length)
+        }
     }
 
     /// Returns a pair of slices which contain the elements of the slice in order
@@ -122,18 +135,11 @@ impl<T, S: Storage> VecDeque<T, S> {
     pub fn as_slices(&self) -> (&[T], &[T]) {
         unsafe {
             let ptr = self.storage.resolve(self.handle).cast::<T>().as_ptr();
-            if self.head > self.capacity - self.length {
-                (
-                    core::slice::from_raw_parts(ptr.add(self.head), self.length),
-                    &mut [],
-                )
-            } else {
-                let first_length = self.capacity - self.head;
-                (
-                    core::slice::from_raw_parts(ptr.add(self.head), first_length),
-                    core::slice::from_raw_parts(ptr, self.length - first_length),
-                )
-            }
+            let first_length = self.length.min(self.capacity - self.head);
+            (
+                core::slice::from_raw_parts(ptr.add(self.head), first_length),
+                core::slice::from_raw_parts(ptr, self.length - first_length),
+            )
         }
     }
 
@@ -143,18 +149,11 @@ impl<T, S: Storage> VecDeque<T, S> {
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
         unsafe {
             let ptr = self.storage.resolve(self.handle).cast::<T>().as_ptr();
-            if self.head > self.capacity - self.length {
-                (
-                    core::slice::from_raw_parts_mut(ptr.add(self.head), self.length),
-                    &mut [],
-                )
-            } else {
-                let first_length = self.capacity - self.head;
-                (
-                    core::slice::from_raw_parts_mut(ptr.add(self.head), first_length),
-                    core::slice::from_raw_parts_mut(ptr, self.length - first_length),
-                )
-            }
+            let first_length = self.length.min(self.capacity - self.head);
+            (
+                core::slice::from_raw_parts_mut(ptr.add(self.head), first_length),
+                core::slice::from_raw_parts_mut(ptr, self.length - first_length),
+            )
         }
     }
 }
