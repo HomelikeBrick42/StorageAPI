@@ -1,4 +1,4 @@
-use crate::{Global, Storage, StorageAllocError};
+use crate::{Global, Storage, StorageAllocError, storage_vec::PushError};
 use cfg_if::cfg_if;
 use core::{alloc::Layout, marker::PhantomData, mem::ManuallyDrop};
 
@@ -15,7 +15,7 @@ pub struct VecDeque<T, S: Storage = Global> {
 impl<T, S: Storage + Default> VecDeque<T, S> {
     /// [`VecDeque::new_in`] but using [`Default::default`] for the allocator
     ///
-    /// This is the same as [`Vec::with_capacity(0)`](Vec::with_capacity)
+    /// This is the same as [`VecDeque::with_capacity(0)`](VecDeque::with_capacity)
     pub fn new() -> Result<Self, StorageAllocError> {
         Self::new_in(Default::default())
     }
@@ -29,7 +29,7 @@ impl<T, S: Storage + Default> VecDeque<T, S> {
 impl<T, S: Storage> VecDeque<T, S> {
     /// Constructs a new [`VecDeque`] allocated in `storage`
     ///
-    /// This is the same as calling [`Vec::with_capacity_in(0, storage)`](Vec::with_capacity_in)
+    /// This is the same as calling [`VecDeque::with_capacity_in(0, storage)`](VecDeque::with_capacity_in)
     pub fn new_in(storage: S) -> Result<Self, StorageAllocError> {
         Self::with_capacity_in(0, storage)
     }
@@ -155,6 +155,107 @@ impl<T, S: Storage> VecDeque<T, S> {
                 core::slice::from_raw_parts_mut(ptr, self.length - first_length),
             )
         }
+    }
+
+    /// Makes room for at least `extra_capacity` elements, without using a growth factor
+    ///
+    /// Capacity may still be greater than the current length after this function returns successfully, just like with [`VecDeque::with_capacity`] the [`Storage`] may return more space than what is requested
+    ///
+    /// This method is only recomended if you dont plan on pushing more elements later, if you are going to push more elements,
+    /// then [`VecDeque::reserve`] is better because it preserves the growth factor
+    pub fn reserve_exact(&mut self, extra_capacity: usize) -> Result<(), StorageAllocError> {
+        let new_capacity = self
+            .length
+            .checked_add(extra_capacity)
+            .ok_or(StorageAllocError)?;
+
+        if new_capacity < self.capacity {
+            return Ok(());
+        }
+
+        let was_contiguous = self.is_contiguous();
+        let old_capacity = self.capacity;
+
+        let new_layout = Layout::array::<T>(new_capacity).map_err(|_| StorageAllocError)?;
+        let capacity_in_bytes;
+        (self.handle, capacity_in_bytes) = unsafe {
+            self.storage.grow(
+                Layout::array::<T>(self.capacity).unwrap_unchecked(),
+                new_layout,
+                self.handle,
+            )?
+        };
+        self.capacity = capacity_in_bytes
+            .checked_div(size_of::<T>())
+            .unwrap_or(usize::MAX);
+
+        if !was_contiguous {
+            unsafe {
+                let ptr = self.storage.resolve(self.handle).cast::<T>().as_ptr();
+
+                let new_head = self
+                    .head
+                    .wrapping_sub(old_capacity)
+                    .wrapping_add(self.capacity);
+                core::ptr::copy(
+                    ptr.add(self.head),
+                    ptr.add(new_head),
+                    old_capacity - self.head,
+                );
+                self.head = new_head;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Makes room for at least `extra_capacity` elements, using a growth factor
+    ///
+    /// To reserve space without a growth factor, see [`VecDeque::reserve_exact`]
+    pub fn reserve(&mut self, extra_capacity: usize) -> Result<(), StorageAllocError> {
+        let new_capacity = self
+            .length
+            .checked_add(extra_capacity)
+            .ok_or(StorageAllocError)?;
+
+        if new_capacity <= self.capacity {
+            return Ok(());
+        }
+
+        if let Some(mut doubled_capacity) = self.capacity.checked_mul(2) {
+            doubled_capacity = doubled_capacity.max(1);
+            if doubled_capacity > new_capacity {
+                if let Ok(()) = self.reserve_exact(doubled_capacity) {
+                    return Ok(());
+                }
+            }
+        }
+
+        self.reserve_exact(extra_capacity)
+    }
+}
+
+impl<T, S: Storage> VecDeque<T, S> {
+    /// Adds a value to the end of the [`VecDeque`]
+    pub fn push_back(&mut self, value: T) -> Result<&mut T, PushError<T>> {
+        match self.reserve(1) {
+            Ok(()) => {}
+            Err(alloc_error) => return Err(PushError { value, alloc_error }),
+        }
+
+        _ = value;
+        todo!()
+    }
+
+    /// Adds a value to the start of the [`VecDeque`]
+    pub fn push_front(&mut self, value: T) -> Result<&mut T, PushError<T>> {
+        match self.reserve(1) {
+            Ok(()) => {}
+            Err(alloc_error) => return Err(PushError { value, alloc_error }),
+        }
+
+        _ = value;
+        todo!()
     }
 }
 
