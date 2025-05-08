@@ -229,14 +229,6 @@ impl_maybe_unsized_methods! {
     }
 }
 
-impl_maybe_unsized_methods! {
-    impl DerefMut [for] Rc {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            unsafe { Self::as_ptr(self).as_mut() }
-        }
-    }
-}
-
 #[cfg(feature = "nightly")]
 impl<T, U, S> core::ops::CoerceUnsized<Rc<U, S>> for Rc<T, S>
 where
