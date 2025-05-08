@@ -23,6 +23,7 @@ pub use inline_storage::InlineStorage;
 pub use sharable_storage_wrapper::ShareableStorageWrapper;
 pub use slot_storage::SlotStorage;
 pub use storage_box::Box;
+pub use storage_rc::Rc;
 pub use storage_string::String;
 pub use storage_vec::Vec;
 
@@ -31,6 +32,7 @@ mod inline_storage;
 mod sharable_storage_wrapper;
 mod slot_storage;
 mod storage_box;
+mod storage_rc;
 mod storage_string;
 mod storage_vec;
 
@@ -45,10 +47,12 @@ pub mod storages {
 /// The collections that use a [`Storage`] for their backing data
 pub mod collections {
     pub use crate::storage_box::Box;
+    pub use crate::storage_rc::Rc;
     pub use crate::storage_string::String;
     pub use crate::storage_vec::{InsertError, PushError, Vec, VecIntoIter};
 }
 
+use cfg_if::cfg_if;
 use core::{alloc::Layout, fmt::Debug, hash::Hash, ptr::NonNull};
 
 /// The error returned when allocating using a [`Storage`] fails
@@ -220,3 +224,41 @@ unsafe impl<T: Storage + ?Sized> Storage for &mut T {
 
 unsafe impl<T: MultipleStorage + ?Sized> MultipleStorage for &mut T {}
 unsafe impl<T: Storage + ?Sized> StableStorage for &mut T {}
+
+cfg_if! {
+    if #[cfg(feature = "nightly")] {
+        macro_rules! impl_maybe_unsized_methods {
+            (impl $($trait:path)? [for] $t:ident $(where [$($where:tt)*])? { $($tokens:tt)* }) => {
+                impl<T: ?Sized, S: Storage> $($trait for )? $t<T, S> $(where $($where)*)? { $($tokens)* }
+            };
+            (unsafe impl $($trait:path)? [for] $t:ident $(where [$($where:tt)*])? { $($tokens:tt)* }) => {
+                unsafe impl<T: ?Sized, S: Storage> $($trait for )? $t<T, S> $(where $($where)*)? { $($tokens)* }
+            };
+        }
+    } else {
+        macro_rules! impl_maybe_unsized_methods {
+            (impl $($trait:path)? [for] $t:ident $(where [$($where:tt)*])? { $($tokens:tt)* }) => {
+                impl<T, S: Storage> $($trait for )? $t<T, S> $(where $($where)*)? { $($tokens)* }
+            };
+            (unsafe impl $($trait:path)? [for] $t:ident $(where [$($where:tt)*])? { $($tokens:tt)* }) => {
+                unsafe impl<T, S: Storage> $($trait for )? $t<T, S> $(where $($where)*)? { $($tokens)* }
+            };
+        }
+    }
+}
+pub(crate) use impl_maybe_unsized_methods;
+
+#[doc(hidden)]
+pub trait Pointee {
+    type Metadata;
+}
+
+impl<T: ?Sized> Pointee for T {
+    cfg_if! {
+        if #[cfg(feature = "nightly")] {
+            type Metadata = <T as core::ptr::Pointee>::Metadata;
+        } else {
+            type Metadata = ();
+        }
+    }
+}

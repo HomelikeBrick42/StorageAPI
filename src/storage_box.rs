@@ -1,4 +1,6 @@
-use crate::{Storage, StorageAllocError, global_storage::Global};
+use crate::{
+    Pointee, Storage, StorageAllocError, global_storage::Global, impl_maybe_unsized_methods,
+};
 use cfg_if::cfg_if;
 use core::{
     alloc::Layout,
@@ -33,30 +35,8 @@ cfg_if! {
     }
 }
 
-cfg_if! {
-    if #[cfg(feature = "nightly")] {
-        macro_rules! impl_maybe_unsized_methods {
-            (impl $($trait:path)? $(where [$($where:tt)*])? { $($tokens:tt)* }) => {
-                impl<T: ?Sized, S: Storage> $($trait for )? Box<T, S> $(where $($where)*)? { $($tokens)* }
-            };
-            (unsafe impl $($trait:path)? $(where [$($where:tt)*])? { $($tokens:tt)* }) => {
-                unsafe impl<T: ?Sized, S: Storage> $($trait for )? Box<T, S> $(where $($where)*)? { $($tokens)* }
-            };
-        }
-    } else {
-        macro_rules! impl_maybe_unsized_methods {
-            (impl $($trait:path)? $(where [$($where:tt)*])? { $($tokens:tt)* }) => {
-                impl<T, S: Storage> $($trait for )? Box<T, S> $(where $($where)*)? { $($tokens)* }
-            };
-            (unsafe impl $($trait:path)? $(where [$($where:tt)*])? { $($tokens:tt)* }) => {
-                unsafe impl<T, S: Storage> $($trait for )? Box<T, S> $(where $($where)*)? { $($tokens)* }
-            };
-        }
-    }
-}
-
 impl_maybe_unsized_methods! {
-    unsafe impl Send
+    unsafe impl Send [for] Box
     where
         [
             T: Send,
@@ -65,7 +45,7 @@ impl_maybe_unsized_methods! {
         ] {}
 }
 impl_maybe_unsized_methods! {
-    unsafe impl Sync
+    unsafe impl Sync [for] Box
     where
         [
             T: Sync,
@@ -110,7 +90,7 @@ impl<T, S: Storage> Box<T, S> {
     /// Moves the `T` out of this [`Box`]
     pub fn into_inner(self) -> T {
         unsafe {
-            let value = self.as_ptr().read();
+            let value = Self::as_ptr(&self).read();
             let (storage, handle, _) = Self::into_raw_parts(self);
             storage.deallocate(Layout::new::<T>(), handle);
             value
@@ -118,29 +98,14 @@ impl<T, S: Storage> Box<T, S> {
     }
 }
 
-#[doc(hidden)]
-pub trait Pointee {
-    type Metadata;
-}
-
-impl<T: ?Sized> Pointee for T {
-    cfg_if! {
-        if #[cfg(feature = "nightly")] {
-            type Metadata = <T as core::ptr::Pointee>::Metadata;
-        } else {
-            type Metadata = ();
-        }
-    }
-}
-
 impl_maybe_unsized_methods! {
-    impl {
+    impl [for] Box {
         /// Reconstructs a [`Box`] from a [`Storage`], [`Storage::Handle`], and [`Pointee::Metadata`](core::ptr::Pointee::Metadata)
         ///
         /// The opposite of [`Box::into_raw_parts`]
         ///
         /// # Safety
-        /// - `handle` must represent a valid allocation in `storage` of `size_of::<T>()` bytes
+        /// - `handle` must represent a valid allocation in `storage` of `size_of::<T>()` bytes that has a valid bitpattern for `T`
         /// - `metadata` must be a valid pointer metadata for the `T` that `handle` represents
         pub unsafe fn from_raw_parts(
             storage: S,
@@ -175,11 +140,11 @@ impl_maybe_unsized_methods! {
         }
 
         /// Gets a [`NonNull<T>`] to the `T` stored in this [`Box`]
-        pub fn as_ptr(&self) -> NonNull<T> {
-            let ptr = unsafe { self.storage.resolve(self.handle) };
+        pub fn as_ptr(b: &Self) -> NonNull<T> {
+            let ptr = unsafe { b.storage.resolve(b.handle) };
             cfg_if! {
                 if #[cfg(feature = "nightly")] {
-                NonNull::from_raw_parts(ptr, core::ptr::metadata(self.metadata_ptr.as_ptr()))
+                    NonNull::from_raw_parts(ptr, core::ptr::metadata(b.metadata_ptr.as_ptr()))
                 } else {
                     ptr.cast()
                 }
@@ -193,11 +158,11 @@ cfg_if! {
         unsafe impl<#[may_dangle] T: ?Sized, S: Storage> Drop for Box<T, S> {
             fn drop(&mut self) {
                 unsafe {
-                    let ptr = self.as_ptr();
+                    let ptr = Self::as_ptr(self);
                     let layout = Layout::for_value_raw(ptr.as_ptr());
                     ptr.drop_in_place();
                     self.storage
-                        .deallocate(layout,  self.handle);
+                        .deallocate(layout, self.handle);
                 }
             }
         }
@@ -205,11 +170,11 @@ cfg_if! {
         impl<T, S: Storage> Drop for Box<T, S> {
             fn drop(&mut self) {
                 unsafe {
-                    let ptr = self.as_ptr();
+                    let ptr = Self::as_ptr(self);
                     let layout = Layout::new::<T>();
                     ptr.drop_in_place();
                     self.storage
-                        .deallocate(layout, ManuallyDrop::take(&mut self.handle));
+                        .deallocate(layout, self.handle);
                 }
             }
         }
@@ -217,19 +182,19 @@ cfg_if! {
 }
 
 impl_maybe_unsized_methods! {
-    impl Deref {
+    impl Deref [for] Box {
         type Target = T;
 
         fn deref(&self) -> &Self::Target {
-            unsafe { self.as_ptr().as_ref() }
+            unsafe { Self::as_ptr(self).as_ref() }
         }
     }
 }
 
 impl_maybe_unsized_methods! {
-    impl DerefMut {
+    impl DerefMut [for] Box {
         fn deref_mut(&mut self) -> &mut Self::Target {
-            unsafe { self.as_ptr().as_mut() }
+            unsafe { Self::as_ptr(self).as_mut() }
         }
     }
 }

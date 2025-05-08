@@ -11,6 +11,7 @@ This is an implementation of the `Storage` API, a better version of the `Allocat
 - `Box`
 - `Vec`
 - `String`
+- `Rc`
 
 ## How is it better than `Allocator`?
 
