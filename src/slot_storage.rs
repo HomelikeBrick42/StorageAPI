@@ -1,4 +1,4 @@
-use crate::{Storage, StorageAllocError, StorageHandle};
+use crate::{StableStorage, Storage, StorageAllocError, StorageHandle};
 use core::{alloc::Layout, cell::UnsafeCell, mem::MaybeUninit, ptr::NonNull};
 
 /// The [`StorageHandle`] for [`SlotStorage`]
@@ -80,3 +80,5 @@ unsafe impl Storage for SlotStorage<'_> {
         Ok((new_handle, new_size))
     }
 }
+
+unsafe impl StableStorage for SlotStorage<'_> {}

@@ -1,6 +1,6 @@
 extern crate alloc;
 
-use crate::{MultipleStorage, Storage, StorageAllocError, StorageHandle};
+use crate::{MultipleStorage, StableStorage, Storage, StorageAllocError, StorageHandle};
 use core::{alloc::Layout, ptr::NonNull};
 
 /// The [`StorageHandle`] for [`Global`],
@@ -112,3 +112,4 @@ impl Global {
 }
 
 unsafe impl MultipleStorage for Global {}
+unsafe impl StableStorage for Global {}

@@ -120,6 +120,12 @@ pub unsafe trait Storage {
 /// This trait can only be implemented if calling [`Storage::allocate`] will not invalidate previous allocations
 pub unsafe trait MultipleStorage: Storage {}
 
+/// A marker trait related to [`Storage`] that guarentees that moving the [`Storage`] wont invalidate pointers/references into it
+///
+/// # Safety
+/// This trait can only be implemented if moving `Self` will not invalidate pointers/references that have been retrived from [`Storage::allocate`] and related allocation methods
+pub unsafe trait StableStorage: Storage {}
+
 unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
     type Handle = T::Handle;
 
@@ -155,6 +161,7 @@ unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
 }
 
 unsafe impl<T: MultipleStorage + ?Sized> MultipleStorage for &T {}
+unsafe impl<T: MultipleStorage + ?Sized> StableStorage for &T {}
 
 unsafe impl<T: Storage + ?Sized> Storage for &mut T {
     type Handle = T::Handle;
@@ -191,3 +198,4 @@ unsafe impl<T: Storage + ?Sized> Storage for &mut T {
 }
 
 unsafe impl<T: MultipleStorage + ?Sized> MultipleStorage for &mut T {}
+unsafe impl<T: Storage + ?Sized> StableStorage for &mut T {}
