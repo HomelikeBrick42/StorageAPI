@@ -20,6 +20,7 @@
 
 pub use global_storage::Global;
 pub use inline_storage::InlineStorage;
+pub use sharable_storage_wrapper::ShareableStorageWrapper;
 pub use slot_storage::SlotStorage;
 pub use storage_box::Box;
 pub use storage_string::String;
@@ -27,6 +28,7 @@ pub use storage_vec::Vec;
 
 mod global_storage;
 mod inline_storage;
+mod sharable_storage_wrapper;
 mod slot_storage;
 mod storage_box;
 mod storage_string;
@@ -36,6 +38,7 @@ mod storage_vec;
 pub mod storages {
     pub use crate::global_storage::{Global, GlobalHandle};
     pub use crate::inline_storage::{InlineStorage, InlineStorageHandle};
+    pub use crate::sharable_storage_wrapper::ShareableStorageWrapper;
     pub use crate::slot_storage::{SlotStorage, SlotStorageHandle};
 }
 
@@ -114,6 +117,19 @@ pub unsafe trait Storage {
     ) -> Result<(Self::Handle, usize), StorageAllocError>;
 }
 
+/// Allows making shared copies of a [`Storage`] that all act as-if they were the original
+///
+/// # Safety
+/// This trait can only be implemented if the value returned by [`ShareableStorage::make_shared_copy`] acts the same as `self`
+pub unsafe trait ShareableStorage: Storage {
+    /// Makes a shared copy of `self` that acts as-if it was `self`
+    ///
+    /// # Safety
+    /// This method is `unsafe` because many data structures assume that they have the only copy of the [`Storage`] and that their handles wont randomly get invalidated (like from something calling [`Storage::allocate`]),
+    /// so `unsafe` code must be careful when exposing these copies to safe code
+    unsafe fn make_shared_copy(&self) -> Self;
+}
+
 /// A marker trait related to [`Storage`] that guarentees that multiple allocations can be made from a [`Storage`] without invalidating old ones
 ///
 /// # Safety
@@ -162,6 +178,11 @@ unsafe impl<T: MultipleStorage + ?Sized> Storage for &T {
 
 unsafe impl<T: MultipleStorage + ?Sized> MultipleStorage for &T {}
 unsafe impl<T: MultipleStorage + ?Sized> StableStorage for &T {}
+unsafe impl<T: MultipleStorage + ?Sized> ShareableStorage for &T {
+    unsafe fn make_shared_copy(&self) -> Self {
+        self
+    }
+}
 
 unsafe impl<T: Storage + ?Sized> Storage for &mut T {
     type Handle = T::Handle;

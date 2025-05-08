@@ -1,6 +1,8 @@
 extern crate alloc;
 
-use crate::{MultipleStorage, StableStorage, Storage, StorageAllocError, StorageHandle};
+use crate::{
+    MultipleStorage, ShareableStorage, StableStorage, Storage, StorageAllocError, StorageHandle,
+};
 use core::{alloc::Layout, ptr::NonNull};
 
 /// The [`StorageHandle`] for [`Global`],
@@ -108,6 +110,12 @@ impl Global {
                 }
             }
         }
+    }
+}
+
+unsafe impl ShareableStorage for Global {
+    unsafe fn make_shared_copy(&self) -> Self {
+        Global
     }
 }
 

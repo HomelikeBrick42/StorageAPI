@@ -1,4 +1,4 @@
-use crate::{StableStorage, Storage, StorageAllocError, StorageHandle};
+use crate::{ShareableStorage, StableStorage, Storage, StorageAllocError, StorageHandle};
 use core::{alloc::Layout, cell::UnsafeCell, mem::MaybeUninit, ptr::NonNull};
 
 /// The [`StorageHandle`] for [`SlotStorage`]
@@ -78,6 +78,12 @@ unsafe impl Storage for SlotStorage<'_> {
             _ = old_layout;
         }
         Ok((new_handle, new_size))
+    }
+}
+
+unsafe impl ShareableStorage for SlotStorage<'_> {
+    unsafe fn make_shared_copy(&self) -> Self {
+        Self { ..*self }
     }
 }
 
