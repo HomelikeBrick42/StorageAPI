@@ -109,7 +109,7 @@ impl_maybe_unsized_methods! {
     {
         fn clone(&self) -> Self {
             let inner = Self::inner(self);
-            debug_assert_ne!(inner.strong.get(), usize::MAX);
+            assert_ne!(inner.strong.get(), usize::MAX);
             inner.strong.set(inner.strong.get() + 1);
             let Rc {
                 handle,
